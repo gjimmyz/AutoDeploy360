@@ -37,7 +37,7 @@ then
                             exit 0
                             ;;
                         *)
-                            echo "无效的选项，请重新输入！"
+                            echo "再多一次机会给你～"
                             ;;
                     esac
                 done
@@ -49,7 +49,7 @@ then
                 exit 0
                 ;;
             *)
-                echo "无效的选项，请重新输入！"
+                echo "再多一次机会给你～"
                 ;;
         esac
     done
