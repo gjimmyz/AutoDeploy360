@@ -1,5 +1,3 @@
-shell for case 菜单.sh
-
 cat case_for_init.sh
 
 #!/bin/bash
