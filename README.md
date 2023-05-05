@@ -1,4 +1,4 @@
 # AutoDeploy360
 
-cobbler+shell+ansible+jinja
+cobbler+shell+ansible+jinja2
  
