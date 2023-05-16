@@ -24,8 +24,9 @@ then
                     read -p "请选择二级菜单选项: " submenu_choice
                     case $submenu_choice in
                         1|a|A)
-                            cd /root/scripts/ansible_yaml && `which ansible-playbook` sh_connect_for_US2004.yaml
-                            cd /root/scripts/ansible_yaml && `which ansible-playbook` -i hosts.yaml init_for_US2004.yaml
+                            cd /root/scripts/ansible_yaml && `which ansible-playbook` sh_connect_for_all.yaml
+                            cd /root/scripts/ansible_yaml && `which ansible-playbook` -i hosts.yaml system_info.yaml
+                            #cd /root/scripts/ansible_yaml && `which ansible-playbook` -i hosts.yaml init_for_US2004.yaml
                             ;;
                         2|b|B)
                             ls -l
@@ -69,7 +70,7 @@ then
                                         echo "第1个软件"
                                         ;;
                                     2|b|B)
-                                        echo "第2���软件"
+                                        echo "第2个软件"
                                         ;;
                                     3|c|C)
                                         echo "第3个软件"
