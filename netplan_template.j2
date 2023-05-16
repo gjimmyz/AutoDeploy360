@@ -1,0 +1,14 @@
+netplan_template.j2
+
+# This is the network config written by 'ansible'
+network:
+  ethernets:
+    {{ ansible_default_ipv4.interface }}:
+      dhcp4: no
+      addresses:
+        - {{ ansible_default_ipv4.address }}/24
+      gateway4: {{ ansible_default_ipv4.gateway }}
+      nameservers:
+        addresses:
+        - 114.114.114.114
+  version: 2
