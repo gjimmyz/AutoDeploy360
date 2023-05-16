@@ -1,0 +1,142 @@
+sh_connect_for_all.yaml
+
+- name: Check SSH connectivity and find reachable IP
+  hosts: localhost
+  gather_facts: yes
+
+  tasks:
+    - name: Check if any tunnel process files exist and processes are running
+      command: pgrep -F {{ item }}
+      with_fileglob:
+        - /root/scripts/ansible_yaml/pid_dir/ssh_tunnel_pid*
+      register: pid_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: Create pid_dir directory if it does not exist
+      file:
+        path: /root/scripts/ansible_yaml/pid_dir
+        state: directory
+      when: pid_check.results | selectattr('rc', '!=', 0) | list | count > 0
+
+    - name: Check SSH tunnel status
+      wait_for:
+        host: localhost
+        port: 2121
+        timeout: 5
+      register: ssh_tunnel_status
+      ignore_errors: true
+
+    - name: Remove IP file if SSH tunnel is not active
+      file:
+        path: /root/scripts/ansible_yaml/pid_dir/reachable_ips
+        state: absent
+      when: ssh_tunnel_status.failed
+
+    - name: Test SSH connection to user@xxx.xxx.xxx.xxx
+      wait_for:
+        host: xx.xxx.xxx.xxx
+        port: xxx
+        timeout: 5
+      vars:
+        user: user
+      register: ssh_test
+      when: pid_check.results | selectattr('rc', '!=', 0) | list | count > 0
+
+    - name: Check if IP file exists
+      stat:
+        path: /root/scripts/ansible_yaml/pid_dir/reachable_ips
+      register: ip_file
+
+    - name: Read IP from file if it exists
+      command: cat /root/scripts/ansible_yaml/pid_dir/reachable_ips
+      register: ip_from_file
+      changed_when: false
+      when: ip_file.stat.exists
+
+    - name: Scan IPs for open SSH ports
+      shell: ssh -o "StrictHostKeyChecking=no" user@xxx.xxx.xxx.xxx -pxxxxx "nmap -p22 -oG - 192.168.109.1-20 | awk '/open/ {match(\$0, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/); print substr(\$0, RSTART, RLENGTH)}'"
+      register: ip_scan
+      when: not ip_file.stat.exists
+
+    - name: Set reachable IPs
+      set_fact:
+        reachable_ips: "{{ ip_from_file.stdout.split('\n') if ip_file.stat.exists else ip_scan.stdout_lines }}"
+
+    - name: Save reachable IPs to file
+      copy:
+        content: "{{ reachable_ips | join('\n') }}"
+        dest: /root/scripts/ansible_yaml/pid_dir/reachable_ips
+      when: not ip_file.stat.exists
+
+    - name: Set initial local port
+      set_fact:
+        local_port: 2121
+
+    - name: Open SSH tunnel if reachable IPs found
+      shell: 'ssh -o "StrictHostKeyChecking=no" -L {{ 2121 + index }}:{{ item }}:22 user@xxx.xxx.xxx.xxx -pxxxxx -N & echo $! > /root/scripts/ansible_yaml/pid_dir/ssh_tunnel_pid_{{ 2121 + index }}'
+      loop: "{{ reachable_ips }}"
+      loop_control:
+        index_var: index
+      register: ssh_tunnel_result
+      changed_when: true
+      when: reachable_ips is defined and pid_check.results | selectattr('rc', '!=', 0) | list | count > 0
+      become: yes
+
+    - name: Wait for tunnels to establish
+      wait_for:
+        host: localhost
+        port: "{{ 2121 + index }}"
+        timeout: 30
+      loop: "{{ reachable_ips }}"
+      loop_control:
+        index_var: index
+
+- name: Run command over SSH tunnel
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+    - name: Check known_hosts modification time
+      ansible.builtin.stat:
+        path: "{{ ansible_env.HOME }}/.ssh/known_hosts"
+      register: known_hosts_stat
+      become: true
+
+    - name: Calculate time difference in minutes
+      set_fact:
+        time_difference: "{{ ((ansible_date_time.epoch | int) - (known_hosts_stat.stat.mtime | int)) / 60 }}"
+      when: known_hosts_stat.stat.exists
+
+    - name: Clean known_hosts file if older than 5 minute
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/.ssh/known_hosts"
+        state: absent
+      become: true
+      when: known_hosts_stat.stat.exists and time_difference | int > 5
+
+    - name: Check last successful connection time
+      ansible.builtin.stat:
+        path: /tmp/last_successful_connection
+      register: last_successful_connection_stat
+
+    - name: Calculate time difference in minutes
+      set_fact:
+        time_difference: "{{ ((ansible_date_time.epoch | int) - (last_successful_connection_stat.stat.mtime | int)) / 60 }}"
+      when: last_successful_connection_stat.stat.exists
+
+    - name: Run ls -l on remote server if not connected in the last 5 minutes
+      shell: 'ssh -o "StrictHostKeyChecking=no" -p {{ 2121 + index }} scadmin@localhost "ls -al"'
+      loop: "{{ reachable_ips }}"
+      loop_control:
+        index_var: index
+      register: remote_cmd_result
+      failed_when: remote_cmd_result.rc != 0
+      changed_when: false
+      when: time_difference | int > 5
+
+    - name: Create a flag file after successful connection
+      file:
+        path: /tmp/last_successful_connection
+        state: touch
+      when: not last_successful_connection_stat.stat.exists or time_difference | int > 5
