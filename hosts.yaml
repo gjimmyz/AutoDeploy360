@@ -1,0 +1,13 @@
+hosts.yaml
+
+[all_servers]
+localhost1 ansible_ssh_host=localhost ansible_port=2121
+localhost2 ansible_ssh_host=localhost ansible_port=2122
+localhost3 ansible_ssh_host=localhost ansible_port=2123
+
+[all_servers:vars]
+ansible_ssh_user=adminn
+ansible_ssh_pass=123456
+ansible_become=true
+ansible_become_user=root
+ansible_become_pass=123456
