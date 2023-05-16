@@ -1,0 +1,6 @@
+centos_tasks.yaml
+
+cat centos_tasks.yaml
+- name: Perform CentOS specific tasks
+  debug:
+    msg: "Performing CentOS specific tasks..."
