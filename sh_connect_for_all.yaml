@@ -33,14 +33,15 @@ sh_connect_for_all.yaml
         state: absent
       when: ssh_tunnel_status.failed
 
-    - name: Test SSH connection to user@xxx.xxx.xxx.xxx
+    - name: Test SSH connection to user@10.xxx.xxx.11
       wait_for:
-        host: xx.xxx.xxx.xxx
-        port: xxx
+        host: 10.xxx.xxx.11
+        port: 22
         timeout: 5
       vars:
         user: user
       register: ssh_test
+      #when: pid_check.rc != 0
       when: pid_check.results | selectattr('rc', '!=', 0) | list | count > 0
 
     - name: Check if IP file exists
@@ -55,7 +56,7 @@ sh_connect_for_all.yaml
       when: ip_file.stat.exists
 
     - name: Scan IPs for open SSH ports
-      shell: ssh -o "StrictHostKeyChecking=no" user@xxx.xxx.xxx.xxx -pxxxxx "nmap -p22 -oG - 192.168.109.1-20 | awk '/open/ {match(\$0, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/); print substr(\$0, RSTART, RLENGTH)}'"
+      shell: ssh -o "StrictHostKeyChecking=no" user@10.xxx.xxxx.11 -p22222 "sudo nmap -p22 -oG - 192.xxx.xxx.1-20 | awk '/open/ {match(\$0, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/); print substr(\$0, RSTART, RLENGTH)}'"
       register: ip_scan
       when: not ip_file.stat.exists
 
@@ -74,7 +75,7 @@ sh_connect_for_all.yaml
         local_port: 2121
 
     - name: Open SSH tunnel if reachable IPs found
-      shell: 'ssh -o "StrictHostKeyChecking=no" -L {{ 2121 + index }}:{{ item }}:22 user@xxx.xxx.xxx.xxx -pxxxxx -N & echo $! > /root/scripts/ansible_yaml/pid_dir/ssh_tunnel_pid_{{ 2121 + index }}'
+      shell: 'ssh -o "StrictHostKeyChecking=no" -L {{ 2121 + index }}:{{ item }}:22 user@10.xxx.xxx.11 -p22222 -N & echo $! > /root/scripts/ansible_yaml/pid_dir/ssh_tunnel_pid_{{ 2121 + index }}'
       loop: "{{ reachable_ips }}"
       loop_control:
         index_var: index
@@ -95,6 +96,11 @@ sh_connect_for_all.yaml
 - name: Run command over SSH tunnel
   hosts: localhost
   gather_facts: no
+  vars:
+    users:
+      - user
+      - admin
+    port_base: 2121
 
   tasks:
     - name: Check known_hosts modification time
@@ -125,15 +131,55 @@ sh_connect_for_all.yaml
         time_difference: "{{ ((ansible_date_time.epoch | int) - (last_successful_connection_stat.stat.mtime | int)) / 60 }}"
       when: last_successful_connection_stat.stat.exists
 
-    - name: Run ls -l on remote server if not connected in the last 5 minutes
-      shell: 'ssh -o "StrictHostKeyChecking=no" -p {{ 2121 + index }} scadmin@localhost "ls -al"'
-      loop: "{{ reachable_ips }}"
-      loop_control:
-        index_var: index
-      register: remote_cmd_result
-      failed_when: remote_cmd_result.rc != 0
-      changed_when: false
-      when: time_difference | int > 5
+    - name: Test SSH connection
+      shell: 'ssh -o "StrictHostKeyChecking=no" -o "BatchMode=yes" -o "ConnectTimeout=5" -p {{ item[1] + 2121 }} {{ item[0] }}@localhost "cat /etc/os-release"'
+      with_nested:
+        - "{{ users }}"
+        - "{{ range(0, reachable_ips | length) }}"
+      register: ssh_test_results
+      ignore_errors: true
+      failed_when: false
+
+    - name: Filter successful SSH connections
+      set_fact:
+        successful_ssh: "{{ ssh_test_results.results | selectattr('rc', 'equalto', 0) | list }}"
+
+    - name: Write SSH test results to file
+      copy:
+        content: "{{ successful_ssh | to_nice_json }}"
+        dest: "/root/scripts/ansible_yaml/successful_ssh.json"
+
+    - name: Run Python script
+      script: /root/scripts/ansible_yaml/run.py
+
+    - name: Read output.txt
+      slurp:
+         src: /root/scripts/ansible_yaml/output.txt
+      register: slurp_content
+
+    - name: Decode and split lines
+      set_fact:
+        content: "{{ slurp_content['content'] | b64decode | split('\n') }}"
+
+    - name: Set ubuntu_servers and centos_servers
+      set_fact:
+        ubuntu_servers: "{{ ubuntu_servers|default([]) + [item.split(' ')] }}"
+      with_items: "{{ content }}"
+      when: "'ubuntu20' in item"
+
+    - name: Set centos_servers
+      set_fact:
+        centos_servers: "{{ centos_servers|default([]) + [item.split(' ')] }}"
+      with_items: "{{ content }}"
+      when: "'centos7' in item"
+
+    - name: Create hosts.yaml from template
+      template:
+        src: /root/scripts/ansible_yaml/host.yaml.j2
+        dest: /root/scripts/ansible_yaml/hosts.yaml
+      vars:
+        ubuntu_servers: "{{ ubuntu_servers }}"
+        centos_servers: "{{ centos_servers }}"
 
     - name: Create a flag file after successful connection
       file:
