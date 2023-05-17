@@ -1,0 +1,7 @@
+localhost_mapping.json
+
+{
+    "0": "localhost1",
+    "1": "localhost2",
+    "2": "localhost3"
+}
