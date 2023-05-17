@@ -5,10 +5,9 @@ system_info.yaml
   gather_facts: yes
 
   tasks:
-    - name: Get system version
-      shell: lsb_release -d | cut -f2-
+    - name: Get OS version
+      shell: cat /etc/os-release | grep ^PRETTY_NAME | cut -d '=' -f2-
       register: os_version
-      ignore_errors: true
       changed_when: false
 
     - name: Get IP address
