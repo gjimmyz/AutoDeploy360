@@ -1,7 +1,5 @@
 vars_ssh_relate.yaml
 
-cat vars_ssh_relate.yaml
-
 ssh_host: 10.xxx.xxx.11
 base_ssh_tunnel_port: 2121
 base_ssh_port: 22
@@ -9,3 +7,5 @@ ssh_port: 22222
 ssh_user: user
 ip_range_start: 192.168.109.1
 ip_range_end: 20
+ntp_server_1: 10.xxx.xxx.42
+ntp_server_2: 10.xxx.xxx.102
