@@ -47,6 +47,7 @@
 - name: Perform operations based on OS version
   hosts: all
   gather_facts: no
+  strategy: free
 
   tasks:
     - name: Include CentOS tasks
