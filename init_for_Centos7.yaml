@@ -1,0 +1,135 @@
+init_for_Centos7.yaml
+
+- name: Perform CentOS specific tasks
+  debug:
+    msg: "Performing CentOS specific tasks..."
+
+- name: "Centos7 关闭selinux"
+  selinux: state=disabled
+
+- name: "Centos7 关闭firewalld"
+  service: name=firewalld state=stopped enabled=no
+
+- name: "Centos7 Configure sudoers file for scadmin user"
+  ansible.builtin.lineinfile:
+    dest: /etc/sudoers
+    regexp: '^ansible_user'
+    line: 'ansible_user ALL=(ALL) NOPASSWD: ALL'
+    state: present
+    validate: 'visudo -cf %s'
+
+- name: "Centos7 修改sshd配置文件"
+  blockinfile:
+    path: /etc/ssh/sshd_config
+    block: |
+      UseDNS no
+  register: sshd_config_update
+
+- name: "Centos7 重启sshd服务"
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    name: sshd
+  when:
+    - sshd_config_update.changed
+
+- name: "Centos7 Check if lock file exists for yum clean metadata"
+  stat:
+    path: /var/cache/yum/.yum-clean-metadata-lock
+  register: yum_clean_metadata_lock_file_stat
+
+- name: "Centos7 清理缓存"
+  command: yum clean metadata
+  args:
+    warn: no
+  when: not yum_clean_metadata_lock_file_stat.stat.exists or (ansible_date_time.epoch | int - yum_clean_metadata_lock_file_stat.stat.mtime | int > 3600)
+
+- name: "Centos7 Create lock file for yum clean metadata"
+  file:
+    path: /var/cache/yum/.yum-clean-metadata-lock
+    state: touch
+  when: not yum_clean_metadata_lock_file_stat.stat.exists or (ansible_date_time.epoch | int - yum_clean_metadata_lock_file_stat.stat.mtime | int > 3600)
+
+- name: "Centos7 屏蔽默认源 使用新的源安装包"
+  yum:
+    name: yum-utils
+    disablerepo: "base,extras,updates"
+
+- name: "Centos7 Check if lock file exists for 禁用老的base extras updates源"
+  stat:
+    path: /var/cache/yum/.yum-disable-metadata-lock
+  register: yum_disable_metadata_lock_file_stat
+
+- name: "Centos7 禁用老的base extras updates源"
+  command: yum-config-manager --disable base extras updates
+  when: not yum_disable_metadata_lock_file_stat.stat.exists or (ansible_date_time.epoch | int - yum_disable_metadata_lock_file_stat.stat.mtime | int > 3600)
+
+- name: "Centos7 Create lock file for 禁用老的base extras updates源"
+  file:
+    path: /var/cache/yum/.yum-disable-metadata-lock
+    state: touch
+  when: not yum_disable_metadata_lock_file_stat.stat.exists or (ansible_date_time.epoch | int - yum_disable_metadata_lock_file_stat.stat.mtime | int > 3600)
+
+- name: "Centos7 Check if lock file exists for check-internet"
+  stat:
+    path: /var/cache/yum/.yum-check-internet-metadata-lock
+  register: yum_check_internet_metadata_lock_file_stat
+
+- block:
+    - name: "Centos7 Check internet connectivity"
+      command: ping -c 1 8.8.8.8
+      register: internet_access
+      ignore_errors: true
+
+    - name: "Centos7 Load outernet repo vars"
+      include_vars:
+        file: vars_repo_out.yaml
+      when: internet_access.rc == 0
+
+    - name: "Centos7 Load internal repo vars"
+      include_vars:
+        file: vars_repo_in.yaml
+      when: internet_access.rc != 0
+
+    - name: "Centos7 创建并更新新的repo文件"
+      template:
+        src: "/root/scripts/ansible_yaml/baseepel_all.j2"
+        dest: "/etc/yum.repos.d/baseepel.repo"
+        owner: root
+        group: root
+        mode: '0644'
+
+  when: not yum_check_internet_metadata_lock_file_stat.stat.exists or (ansible_date_time.epoch | int - yum_check_internet_metadata_lock_file_stat.stat.mtime | int > 3600)
+
+- name: "Centos7 Create lock file for check-internet"
+  file:
+    path: /var/cache/yum/.yum-check-internet-metadata-lock
+    state: touch
+  when: not yum_check_internet_metadata_lock_file_stat.stat.exists or (ansible_date_time.epoch | int - yum_check_internet_metadata_lock_file_stat.stat.mtime | int > 3600)
+
+- name: "Centos7 刷新源"
+  command: yum makecache
+
+- name: "Centos7 Install base software"
+  yum:
+    name:
+      - iftop
+      - zip
+      - python2-pip
+      - lrzsz
+      - wget
+      - gcc
+      - gcc-c++
+      - autoconf
+      - automake
+      - make
+      - iotop
+      - atop
+      - vim
+      - net-tools
+      - samba
+      - samba-client
+      - ntp
+      - ntpdate
+      - nfs-utils
+    state: present
