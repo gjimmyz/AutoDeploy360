@@ -12,6 +12,12 @@ sh_connect_for_all.yaml
       register: pid_check
       changed_when: false
       ignore_errors: true
+      failed_when: false
+
+    - name: Write output to file
+      copy:
+        content: "{{ pid_check }}"
+        dest: /tmp/tmp_pid_check_file
 
     - name: Create pid_dir directory if it does not exist
       file:
@@ -26,6 +32,12 @@ sh_connect_for_all.yaml
         timeout: 5
       register: ssh_tunnel_status
       ignore_errors: true
+      failed_when: false
+
+    - name: Write output to file
+      copy:
+        content: "{{ ssh_tunnel_status }}"
+        dest: /tmp/tmp_ssh_tunnel_status_file
 
     - name: Remove IP file if SSH tunnel is not active
       file:
@@ -56,7 +68,7 @@ sh_connect_for_all.yaml
       when: ip_file.stat.exists
 
     - name: Scan IPs for open SSH ports
-      shell: ssh -o "StrictHostKeyChecking=no" user@10.xxx.xxxx.11 -p22222 "sudo nmap -p22 -oG - 192.xxx.xxx.1-20 | awk '/open/ {match(\$0, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/); print substr(\$0, RSTART, RLENGTH)}'"
+      shell: ssh -o "StrictHostKeyChecking=no" user@10.xxx.xxx.11 -p22222 "sudo nmap -p22 -oG - 192.168.109.1-20 | awk '/open/ {match(\$0, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/); print substr(\$0, RSTART, RLENGTH)}'"
       register: ip_scan
       when: not ip_file.stat.exists
 
