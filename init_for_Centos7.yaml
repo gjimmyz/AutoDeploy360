@@ -2,6 +2,9 @@
   debug:
     msg: "Performing CentOS specific tasks..."
 
+- name: Include vars
+  include_vars: vars_ssh_relate.yaml
+
 - name: "Centos7 关闭selinux"
   selinux: state=disabled
 
@@ -11,8 +14,8 @@
 - name: "Centos7 Configure sudoers file for user user"
   ansible.builtin.lineinfile:
     dest: /etc/sudoers
-    regexp: '^user'
-    line: 'user ALL=(ALL) NOPASSWD: ALL'
+    regexp: '^{{ ssh_user }}'
+    line: '{{ ssh_user }} ALL=(ALL) NOPASSWD: ALL'
     state: present
     validate: 'visudo -cf %s'
 
@@ -135,8 +138,10 @@
       blockinfile:
         path: /etc/ntp.conf
         block: |
-          server 10.xxx.xxx.42 iburst
-          server 10.xxx.xxx.102 iburst
+          server {{ ntp_server_1 }} iburst
+          server {{ ntp_server_2 }} iburst
+          server 10.80.121.42 iburst
+          server 10.80.121.102 iburst
         register: ntp_config_update
 
     - name: "Restart ntpd service"
