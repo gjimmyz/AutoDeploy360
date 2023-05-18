@@ -1,5 +1,3 @@
-system_info.yaml
-
 - name: Gather system information
   hosts: all
   gather_facts: yes
@@ -52,7 +50,8 @@ system_info.yaml
 
   tasks:
     - name: Include CentOS tasks
-      include_tasks: centos_tasks.yaml
+      #include_tasks: centos_tasks.yaml
+      include_tasks: init_for_Centos7.yaml
       when: "'CentOS' in os_version.stdout"
 
     - name: Include Ubuntu tasks
