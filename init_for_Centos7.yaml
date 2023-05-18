@@ -140,8 +140,6 @@
         block: |
           server {{ ntp_server_1 }} iburst
           server {{ ntp_server_2 }} iburst
-          server 10.80.121.42 iburst
-          server 10.80.121.102 iburst
         register: ntp_config_update
 
     - name: "Restart ntpd service"
