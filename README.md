@@ -11,7 +11,7 @@ cobbler+shell+ansible+jinja2
 修复:
 了一些bug
 ）
+![Alt text](./images/WechatIMG3578.png)
 0.03版本更新
 修复一些bug
 新增centos7的初始化
-![Alt text](./images/WechatIMG3578.png)
