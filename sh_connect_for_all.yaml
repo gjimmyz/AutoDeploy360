@@ -29,7 +29,7 @@ sh_connect_for_all.yaml
       wait_for:
         host: localhost
         port: 2121
-        timeout: 5
+        timeout: 2
       register: ssh_tunnel_status
       ignore_errors: true
       failed_when: false
