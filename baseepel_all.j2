@@ -1,0 +1,22 @@
+baseepel_all.j2
+
+[base_new]
+name=CentOS-Base
+baseurl={{ baseurl_base }}
+gpgcheck=1
+gpgkey={{ gpgkey_base }}
+[updates_new]
+name=CentOS-Updates
+baseurl={{ baseurl_updates }}
+gpgcheck=1
+gpgkey={{ gpgkey_updates }}
+[extras_new]
+name=CentOS-Extras
+baseurl={{ baseurl_extras }}
+gpgcheck=1
+gpgkey={{ gpgkey_extras }}
+[epel_new]
+name=Extra Packages
+baseurl={{ baseurl_epel }}
+gpgcheck=1
+gpgkey={{ gpgkey_epel }}
