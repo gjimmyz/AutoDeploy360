@@ -1,0 +1,10 @@
+vars_repo_out.yaml
+
+baseurl_base: "https://mirrors.ustc.edu.cn/centos/$releasever/os/$basearch/"
+gpgkey_base: "https://mirrors.ustc.edu.cn/centos/RPM-GPG-KEY-CentOS-7"
+baseurl_updates: "https://mirrors.ustc.edu.cn/centos/$releasever/updates/$basearch/"
+gpgkey_updates: "https://mirrors.ustc.edu.cn/centos/RPM-GPG-KEY-CentOS-7"
+baseurl_extras: "https://mirrors.ustc.edu.cn/centos/$releasever/extras/$basearch/"
+gpgkey_extras: "https://mirrors.ustc.edu.cn/centos/RPM-GPG-KEY-CentOS-7"
+baseurl_epel: "https://mirrors.ustc.edu.cn/epel/7Server/$basearch"
+gpgkey_epel: "https://mirrors.ustc.edu.cn/epel/RPM-GPG-KEY-EPEL-7"
