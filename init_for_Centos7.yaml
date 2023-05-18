@@ -10,11 +10,11 @@ init_for_Centos7.yaml
 - name: "Centos7 关闭firewalld"
   service: name=firewalld state=stopped enabled=no
 
-- name: "Centos7 Configure sudoers file for scadmin user"
+- name: "Centos7 Configure sudoers file for user user"
   ansible.builtin.lineinfile:
     dest: /etc/sudoers
-    regexp: '^ansible_user'
-    line: 'ansible_user ALL=(ALL) NOPASSWD: ALL'
+    regexp: '^user'
+    line: 'user ALL=(ALL) NOPASSWD: ALL'
     state: present
     validate: 'visudo -cf %s'
 
