@@ -1,5 +1,3 @@
-init_for_Centos7.yaml
-
 - name: Perform CentOS specific tasks
   debug:
     msg: "Performing CentOS specific tasks..."
@@ -10,7 +8,7 @@ init_for_Centos7.yaml
 - name: "Centos7 关闭firewalld"
   service: name=firewalld state=stopped enabled=no
 
-- name: "Centos7 Configure sudoers file for user user"
+- name: "Centos7 Configure sudoers file for scadmin user"
   ansible.builtin.lineinfile:
     dest: /etc/sudoers
     regexp: '^user'
@@ -75,37 +73,81 @@ init_for_Centos7.yaml
     path: /var/cache/yum/.yum-check-internet-metadata-lock
   register: yum_check_internet_metadata_lock_file_stat
 
-- block:
-    - name: "Centos7 Check internet connectivity"
-      command: ping -c 1 8.8.8.8
-      register: internet_access
-      ignore_errors: true
-
-    - name: "Centos7 Load outernet repo vars"
-      include_vars:
-        file: vars_repo_out.yaml
-      when: internet_access.rc == 0
-
-    - name: "Centos7 Load internal repo vars"
-      include_vars:
-        file: vars_repo_in.yaml
-      when: internet_access.rc != 0
-
-    - name: "Centos7 创建并更新新的repo文件"
-      template:
-        src: "/root/scripts/ansible_yaml/baseepel_all.j2"
-        dest: "/etc/yum.repos.d/baseepel.repo"
-        owner: root
-        group: root
-        mode: '0644'
-
+- name: "Check if internet is available"
+  command: ping -c 1 8.8.8.8
+  register: internet_access
+  ignore_errors: true
   when: not yum_check_internet_metadata_lock_file_stat.stat.exists or (ansible_date_time.epoch | int - yum_check_internet_metadata_lock_file_stat.stat.mtime | int > 3600)
+
+#- set_fact:
+#    is_internet_available: "{{ internet_access.rc == 0 }}"
+#  when: internet_access is defined
+
+- set_fact:
+    is_internet_available: "{{ internet_access.rc == 0 }}"
+  when: internet_access is defined and 'rc' in internet_access
+
+- name: "Centos7 Load outernet repo vars"
+  include_vars:
+    file: vars_repo_out.yaml
+  when: is_internet_available is defined and is_internet_available
+
+- name: "Centos7 Load internal repo vars"
+  include_vars:
+    file: vars_repo_in.yaml
+  when: is_internet_available is defined and not is_internet_available
+
+- name: "Centos7 创建并更新新的repo文件"
+  template:
+    src: "/root/scripts/ansible_yaml/baseepel_all.j2"
+    dest: "/etc/yum.repos.d/baseepel.repo"
+    owner: root
+    group: root
+    mode: '0644'
+  when: is_internet_available is defined
 
 - name: "Centos7 Create lock file for check-internet"
   file:
     path: /var/cache/yum/.yum-check-internet-metadata-lock
     state: touch
-  when: not yum_check_internet_metadata_lock_file_stat.stat.exists or (ansible_date_time.epoch | int - yum_check_internet_metadata_lock_file_stat.stat.mtime | int > 3600)
+  when: is_internet_available is defined
+
+- block:
+    - name: "Set up cron job for time synchronization for internet hosts"
+      cron:
+        name: "Sync time every hour"
+        minute: "0"
+        hour: "*"
+        user: root
+        job: "/usr/sbin/ntpdate stdtime.gov.hk > /dev/null 2>&1"
+  when: is_internet_available is defined and is_internet_available
+
+- block:
+    - name: "Delete server lines in ntp.conf"
+      lineinfile:
+        dest: /etc/ntp.conf
+        regex: '^server [0-4].centos.pool.ntp.org iburst'
+        state: absent
+        backup: yes
+        backrefs: yes
+
+    - name: "Add internal ntp servers"
+      blockinfile:
+        path: /etc/ntp.conf
+        block: |
+          server 10.xxx.xxx.42 iburst
+          server 10.xxx.xxx.102 iburst
+        register: ntp_config_update
+
+    - name: "Restart ntpd service"
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: ntpd
+        enabled: yes
+      when:
+        - ntp_config_update.changed
+  when: is_internet_available is defined and not is_internet_available
 
 - name: "Centos7 刷新源"
   command: yum makecache
