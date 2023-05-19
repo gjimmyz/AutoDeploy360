@@ -30,6 +30,20 @@
   when:
     - sshd_config_update.changed
 
+- name: Set vm.swappiness to 0 using sysctl
+  ansible.builtin.sysctl:
+    name: vm.swappiness
+    value: '0'
+    state: present
+    sysctl_set: yes
+    reload: yes
+
+- name: Ensure vm.swappiness is set in sysctl.conf
+  ansible.builtin.lineinfile:
+    path: /etc/sysctl.conf
+    regexp: '^vm.swappiness[[:space:]]?='
+    line: 'vm.swappiness = 0'
+
 - name: "Centos7 Check if lock file exists for yum clean metadata"
   stat:
     path: /var/cache/yum/.yum-clean-metadata-lock
@@ -185,7 +199,17 @@
       - nfs-utils
       - python3
       - python3-pip
+      - tuned
     state: present
+
+- name: Get current tuned profile
+  shell: "tuned-adm active | awk -F': ' '{print $2}'"
+  register: current_tuned_profile
+  changed_when: False
+
+- name: Activate network-throughput profile
+  command: tuned-adm profile network-latency
+  when: current_tuned_profile.stdout != "network-latency"
 
 - name: Check if network configuration has been applied
   stat:
