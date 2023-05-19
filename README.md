@@ -15,3 +15,6 @@ cobbler+shell+ansible+jinja2
 0.03版本更新
 修复一些bug
 新增centos7的初始化
+0.04版本更新
+修复bug
+继续完善centos7的初始化
