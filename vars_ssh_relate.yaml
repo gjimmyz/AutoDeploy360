@@ -10,3 +10,4 @@ ntp_server_2: 10.xxx.xxx.102
 system_users:
   - user
   - admin
+internet_check_ip: 8.8.8.8
