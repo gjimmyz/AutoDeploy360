@@ -1,5 +1,3 @@
-init_for_US2004.yaml
-
 - name: Configure sudoers file for admin user
   ansible.builtin.lineinfile:
     dest: /etc/sudoers
