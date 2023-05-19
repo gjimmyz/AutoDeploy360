@@ -183,6 +183,8 @@
       - ntp
       - ntpdate
       - nfs-utils
+      - python3
+      - python3-pip
     state: present
 
 - name: Check if network configuration has been applied
