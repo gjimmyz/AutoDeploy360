@@ -1,5 +1,3 @@
-ubuntu_tasks.yaml
-
 - name: Perform Ubuntu specific tasks
   debug:
     msg: "Performing Ubuntu specific tasks..."
