@@ -54,7 +54,7 @@ sh_connect_for_all.yaml
         port: "{{ ssh_port }}"
         timeout: 5
       vars:
-        ansible_user: ansible_user
+        ansible_user: "{{ ssh_user }}"
       register: ssh_test
       when: pid_check.results | selectattr('rc', '!=', 0) | list | count > 0
 
@@ -71,7 +71,7 @@ sh_connect_for_all.yaml
 
     - name: Scan IPs for open SSH ports
       shell: >
-        ssh -o "StrictHostKeyChecking=no" "{{ ssh_user }}@{{ ssh_host }}" -p"{{ ssh_port }}" "sudo nmap -p{{ base_ssh_port }} -oG - {{ ip_range_start }}-{{ ip_range_end }} | awk '/open/ {match(\$0, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/); print substr(\$0, RSTART, RLENGTH)}'"
+        ssh -o "StrictHostKeyChecking=no" "{{ ssh_user }}@{{ ssh_host }}" -p"{{ ssh_port }}" "sudo nmap -p{{ ssh_default_port }} -oG - {{ ip_range_start }}-{{ ip_range_end }} | awk '/open/ {match(\$0, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/); print substr(\$0, RSTART, RLENGTH)}'"
       register: ip_scan
       when: not ip_file.stat.exists
 
@@ -86,7 +86,7 @@ sh_connect_for_all.yaml
       when: not ip_file.stat.exists
 
     - name: Open SSH tunnel if reachable IPs found
-      shell: 'ssh -o "StrictHostKeyChecking=no" -L {{ base_ssh_tunnel_port + index }}:{{ item }}:{{ base_ssh_port }} {{ ssh_user }}@{{ ssh_host }} -p{{ ssh_port}} -N & echo $! > /root/scripts/ansible_yaml/pid_dir/ssh_tunnel_pid_{{ base_ssh_tunnel_port + index }}'
+      shell: 'ssh -o "StrictHostKeyChecking=no" -L {{ base_ssh_tunnel_port + index }}:{{ item }}:{{ ssh_default_port }} {{ ssh_user }}@{{ ssh_host }} -p{{ ssh_port }} -N & echo $! > /root/scripts/ansible_yaml/pid_dir/ssh_tunnel_pid_{{ base_ssh_tunnel_port + index }}'
       loop: "{{ reachable_ips }}"
       loop_control:
         index_var: index
@@ -108,9 +108,7 @@ sh_connect_for_all.yaml
   hosts: localhost
   gather_facts: no
   vars:
-    users:
-      - user
-      - admin
+    users: "{{ system_users }}"
 
   tasks:
     - name: Check known_hosts modification time
