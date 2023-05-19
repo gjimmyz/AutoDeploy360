@@ -87,7 +87,7 @@
   register: yum_check_internet_metadata_lock_file_stat
 
 - name: "Check if internet is available"
-  command: ping -c 1 8.8.8.8
+  command: "ping -c 1 {{ internet_check_ip }}"
   register: internet_access
   ignore_errors: true
   when: not yum_check_internet_metadata_lock_file_stat.stat.exists or (ansible_date_time.epoch | int - yum_check_internet_metadata_lock_file_stat.stat.mtime | int > 3600)
