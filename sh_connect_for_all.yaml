@@ -163,10 +163,19 @@
       set_fact:
         successful_ssh: "{{ ssh_test_results.results | selectattr('rc', 'equalto', 0) | list }}"
 
+    - name: Filter failed SSH connections
+      set_fact:
+        failed_ssh: "{{ ssh_test_results.results | rejectattr('rc', 'equalto', 0) | list }}"
+
     - name: Write SSH test results to file
       copy:
         content: "{{ successful_ssh | to_nice_json }}"
         dest: "/root/scripts/ansible_yaml/successful_ssh.json"
+
+    - name: Write failed SSH test results to file
+      copy:
+        content: "{{ failed_ssh | to_nice_json }}"
+        dest: "/root/scripts/ansible_yaml/failed_ssh.json"
 
     - name: Run Python script
       script: /root/scripts/ansible_yaml/run.py
