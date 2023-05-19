@@ -9,3 +9,6 @@ ip_range_start: 192.168.109.1
 ip_range_end: 20
 ntp_server_1: 10.xxx.xxx.42
 ntp_server_2: 10.xxx.xxx.102
+system_users:
+  - user
+  - admin
