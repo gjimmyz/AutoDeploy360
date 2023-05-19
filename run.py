@@ -40,6 +40,9 @@ for ssh_info in successful_ssh:
 
 # Write in specified order to a new file
 with open('output.txt', 'w') as f:
-    f.write(results['localhost1'] + '\n')
-    f.write(results['localhost3'] + '\n')
-    f.write(results['localhost2'] + '\n')
+    if 'localhost1' in results:
+        f.write(results['localhost1'] + '\n')
+    if 'localhost3' in results:
+        f.write(results['localhost3'] + '\n')
+    if 'localhost2' in results:
+        f.write(results['localhost2'] + '\n')
