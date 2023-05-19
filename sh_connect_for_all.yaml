@@ -1,5 +1,3 @@
-sh_connect_for_all.yaml
-
 - name: Check SSH connectivity and find reachable IP
   hosts: localhost
   gather_facts: yes
@@ -8,19 +6,43 @@ sh_connect_for_all.yaml
     - name: Include vars
       include_vars: vars_ssh_relate.yaml
 
+    - name: Check file age
+      stat:
+        path: /root/scripts/ansible_yaml/pid_dir/reachable_ips
+      register: filestat
+
+    - name: Calculate file age and delete if older than 5 minutes
+      block:
+        - name: Calculate file age
+          set_fact:
+            file_age_minutes: "{{ ((ansible_date_time.epoch|int) - (filestat.stat.mtime)) / 60 }}"
+
+        - name: Delete file if older than 5 minutes
+          file:
+            path: /root/scripts/ansible_yaml/pid_dir/reachable_ips
+            state: absent
+          when: file_age_minutes| int > 5
+      when: filestat.stat.exists
+
+    - name: Find all tunnel process files
+      find:
+        paths: "/root/scripts/ansible_yaml/pid_dir"
+        patterns: "ssh_tunnel_pid*"
+      register: pid_files
+
     - name: Check if any tunnel process files exist and processes are running
-      command: pgrep -F {{ item }}
-      with_fileglob:
-        - /root/scripts/ansible_yaml/pid_dir/ssh_tunnel_pid*
+      command: pgrep -F {{ item.path }}
       register: pid_check
+      with_items: "{{ pid_files.files }}"
       changed_when: false
       ignore_errors: true
-      failed_when: false
 
-    - name: Write output to file
-      copy:
-        content: "{{ pid_check }}"
-        dest: /tmp/tmp_pid_check_file
+    - name: Remove process files where process does not exist
+      file:
+        path: "{{ item.item.path }}"
+        state: absent
+      when: item.rc != 0
+      with_items: "{{ pid_check.results }}"
 
     - name: Create pid_dir directory if it does not exist
       file:
@@ -36,17 +58,6 @@ sh_connect_for_all.yaml
       register: ssh_tunnel_status
       ignore_errors: true
       failed_when: false
-
-    - name: Write output to file
-      copy:
-        content: "{{ ssh_tunnel_status }}"
-        dest: /tmp/tmp_ssh_tunnel_status_file
-
-    - name: Remove IP file if SSH tunnel is not active
-      file:
-        path: /root/scripts/ansible_yaml/pid_dir/reachable_ips
-        state: absent
-      when: ssh_tunnel_status.failed
 
     - name: Test SSH connection
       wait_for:
@@ -92,7 +103,7 @@ sh_connect_for_all.yaml
         index_var: index
       register: ssh_tunnel_result
       changed_when: true
-      when: reachable_ips is defined and pid_check.results | selectattr('rc', '!=', 0) | list | count > 0
+      when: reachable_ips is defined and pid_files.files | selectattr('path', 'in', pid_check.results | selectattr('rc', '==', 0) | map(attribute='item.path') |list ) | list | count == 0
       become: yes
 
     - name: Wait for tunnels to establish
