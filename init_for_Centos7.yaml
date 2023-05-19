@@ -1,7 +1,3 @@
-- name: Perform CentOS specific tasks
-  debug:
-    msg: "Performing CentOS specific tasks..."
-
 - name: Include vars
   include_vars: vars_ssh_relate.yaml
 
@@ -82,10 +78,6 @@
   ignore_errors: true
   when: not yum_check_internet_metadata_lock_file_stat.stat.exists or (ansible_date_time.epoch | int - yum_check_internet_metadata_lock_file_stat.stat.mtime | int > 3600)
 
-#- set_fact:
-#    is_internet_available: "{{ internet_access.rc == 0 }}"
-#  when: internet_access is defined
-
 - set_fact:
     is_internet_available: "{{ internet_access.rc == 0 }}"
   when: internet_access is defined and 'rc' in internet_access
@@ -152,8 +144,22 @@
         - ntp_config_update.changed
   when: is_internet_available is defined and not is_internet_available
 
+- name: "Centos7 Check if lock file exists for yum makecache metadata"
+  stat:
+    path: /var/cache/yum/.yum-makecache-metadata-lock
+  register: yum_makecache_metadata_lock_file_stat
+
 - name: "Centos7 刷新源"
   command: yum makecache
+  args:
+    warn: no
+  when: not yum_makecache_metadata_lock_file_stat.stat.exists or (ansible_date_time.epoch | int - yum_makecache_metadata_lock_file_stat.stat.mtime | int > 3600)
+
+- name: "Centos7 Create lock file for yum makecache metadata"
+  file:
+    path: /var/cache/yum/.yum-makecache-metadata-lock
+    state: touch
+  when: not yum_makecache_metadata_lock_file_stat.stat.exists or (ansible_date_time.epoch | int - yum_makecache_metadata_lock_file_stat.stat.mtime | int > 3600)
 
 - name: "Centos7 Install base software"
   yum:
@@ -178,3 +184,57 @@
       - ntpdate
       - nfs-utils
     state: present
+
+- name: Check if network configuration has been applied
+  stat:
+    path: /var/lib/network_config_applied
+  register: network_config_applied
+
+- name: Gather networking facts
+  setup:
+    gather_subset: network
+  when: not network_config_applied.stat.exists
+
+- name: Reset connection
+  meta: reset_connection
+  when: not network_config_applied.stat.exists
+
+- name: Configure static IP
+  template:
+    src: /root/scripts/ansible_yaml/ifcfg-template.j2
+    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}"
+  when: not network_config_applied.stat.exists
+
+- name: Restart network
+  command: systemctl restart network
+  when: not network_config_applied.stat.exists
+
+- name: Create a flag file after network configuration
+  file:
+    path: /var/lib/network_config_applied
+    state: touch
+  when: not network_config_applied.stat.exists
+
+- name: Check if lock file exists
+  stat:
+    path: /var/lib/reboot.lock
+  register: lock_file_stat
+
+- name: Create lock file
+  file:
+    path: /var/lib/reboot.lock
+    state: touch
+  when:
+    - not lock_file_stat.stat.exists
+    - (ansible_facts['uptime_seconds'] | int) <= 86400
+
+- name: Restart machine if CentOS7 and no lock file exists and uptime < 1 day
+  command: /sbin/reboot
+  async: 0
+  poll: 0
+  failed_when: false
+  ignore_errors: true
+  ignore_unreachable: true
+  when:
+    - not lock_file_stat.stat.exists
+    - (ansible_facts['uptime_seconds'] | int) <= 86400
