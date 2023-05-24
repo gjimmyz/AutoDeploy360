@@ -1,2 +1,11 @@
 ---
 # tasks file for system_info
+- include_tasks: system_info.yaml
+
+- name: Include CentOS tasks
+  include_tasks: ../files/centos_tasks.yaml
+  when: "'CentOS' in os_version.stdout"
+
+- name: Include Ubuntu tasks
+  include_tasks: ../files/ubuntu_tasks.yaml
+  when: "'Ubuntu' in os_version.stdout"

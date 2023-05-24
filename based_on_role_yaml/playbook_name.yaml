@@ -7,5 +7,15 @@
     - name: Execute tasks create_hosts_yaml
       include_tasks: "/root/scripts/based_on_role_yaml/get_real_can_loginhost_for_create_hosts_yaml/tasks/create_hosts_yaml"
 
-    - name: Execute tasks system_info.yaml
-      include_tasks: "/root/scripts/based_on_role_yaml/system_info/tasks/system_info.yaml"
+    #- name: Execute tasks system_info.yaml
+    #  include_tasks: "/root/scripts/based_on_role_yaml/system_info/tasks/system_info.yaml"
+
+- hosts: ubuntu_servers
+  gather_facts: yes
+  roles:
+    - system_info
+
+- hosts: centos_servers
+  gather_facts: yes
+  roles:
+    - system_info
