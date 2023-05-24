@@ -1,0 +1,50 @@
+- name: Get OS version
+  shell: cat /etc/os-release | grep ^PRETTY_NAME | cut -d '=' -f2-
+  register: os_version
+  changed_when: false
+
+- name: Get IP address
+  shell: hostname -I | awk '{print $1}'
+  register: ip_address
+  changed_when: false
+
+- name: Get MAC address
+  shell: cat /sys/class/net/$(ip route get 8.8.8.8 | awk '{print $5}')/address
+  register: mac_address
+  changed_when: false
+
+- name: Generate system information string
+  set_fact:
+    system_info: |
+      OS Version: {{ os_version.stdout }}
+      IP Address: {{ ip_address.stdout }}
+      MAC Address: {{ mac_address.stdout }}
+
+- name: Display system information
+  debug:
+    msg: "{{ system_info }}"
+
+- name: Read system information from file
+  slurp:
+    src: /var/lib/system_info.txt
+  register: old_system_info
+  ignore_errors: true
+
+- name: Write system information to a file
+  copy:
+    content: "{{ system_info }}"
+    dest: /var/lib/system_info.txt
+  register: system_info_file
+  changed_when: >
+    old_system_info is failed or
+    (old_system_info['content'] | b64decode != system_info)
+
+- name: Include CentOS tasks
+  include_tasks: ../files/centos_tasks.yaml
+  #include_tasks: init_for_Centos7.yaml
+  when: "'CentOS' in os_version.stdout"
+
+- name: Include Ubuntu tasks
+  include_tasks: ../files/ubuntu_tasks.yaml
+  #include_tasks: init_for_US2004.yaml
+  when: "'Ubuntu' in os_version.stdout"

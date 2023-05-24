@@ -1,0 +1,3 @@
+- name: Perform CentOS specific tasks
+  debug:
+    msg: "Performing CentOS specific tasks..."
