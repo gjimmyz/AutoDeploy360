@@ -1,0 +1,71 @@
+- name: Include vars
+  include_vars: ../vars/ssh_relate.yaml
+
+- name: Set cache timeout
+  set_fact:
+    cache_timeout: "{{ cache_timeout }}"
+
+- name: Check if pid_ip_dir_path exists
+  stat:
+    path: "{{ pid_ip_dir_path }}"
+  register: dir_stat
+
+- name: Delete pid_ip_dir_path if it exists and is older than cache timeout
+  file:
+    path: "{{ pid_ip_dir_path }}"
+    state: absent
+  when: dir_stat.stat.exists and ((ansible_date_time.epoch|int - dir_stat.stat.ctime|int) > cache_timeout)
+
+- name: Check if pid_ip_dir_path is empty
+  find:
+    paths: "{{ pid_ip_dir_path }}"
+    file_type: any
+  register: pid_ip_dir_content
+  ignore_errors: yes
+
+- name: Create pid_ip_dir_path if it does not exist and is empty
+  file:
+    path: "{{ pid_ip_dir_path }}"
+    state: directory
+  when: not pid_ip_dir_content.files
+
+- name: Scan IPs for open SSH ports
+  shell: >
+    ssh -o "StrictHostKeyChecking=no" "{{ ssh_user }}@{{ ssh_host }}" -p"{{ ssh_port }}" "sudo nmap -p{{ ssh_default_port }} -oG - {{ ip_range_start }}-{{ ip_range_end }} | awk '/open/ {match(\$0, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/); print substr(\$0, RSTART, RLENGTH)}'"
+  register: ip_scan
+  when: not pid_ip_dir_content.files
+
+- name: Record reachable IPs to pid_ip_file_path
+  copy:
+    content: "{{ ip_scan.stdout }}"
+    dest: "{{ pid_ip_file_path }}"
+  when: ip_scan.stdout is defined and ip_scan.stdout != ""
+
+- name: Read reachable IPs from pid_ip_file_path
+  slurp:
+    src: "{{ pid_ip_file_path }}"
+  register: reachable_ips_file
+
+- name: Extract reachable IPs from pid_ip_file_path content
+  set_fact:
+    reachable_ips: "{{ reachable_ips_file.content | b64decode | trim | split('\n') }}"
+  when: reachable_ips_file.content is defined and reachable_ips_file.content != ""
+
+- name: Open SSH tunnel if reachable IPs found
+  shell: 'ssh -o "StrictHostKeyChecking=no" -L {{ base_ssh_tunnel_port + index }}:{{ item }}:{{ ssh_default_port }} {{ ssh_user }}@{{ ssh_host }} -p{{ ssh_port }} -N & echo $! > {{ pid_ip_dir_path }}/ssh_tunnel_pid_{{ base_ssh_tunnel_port + index }}'
+  loop: "{{ reachable_ips }}"
+  loop_control:
+    index_var: index
+  register: ssh_tunnel_result
+  changed_when: true
+  when: reachable_ips is defined and reachable_ips | length > 0
+  become: yes
+
+- name: Wait for tunnels to establish
+  wait_for:
+    host: localhost
+    port: "{{ base_ssh_tunnel_port + index }}"
+    timeout: 30
+  loop: "{{ reachable_ips }}"
+  loop_control:
+    index_var: index
