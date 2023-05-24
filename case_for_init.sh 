@@ -137,7 +137,7 @@ then
                 bash
                 ;;
             5|e|E)
-                ssh root@10.21.254.75
+                ssh root@10.xxx.xxx.75
                 ;;
             99|q|Q)
                 exit 0
