@@ -1,5 +1,5 @@
 - name: Include vars
-  include_vars: ../vars/ssh_relate.yaml
+  include_vars: ../vars/system_info_var.yaml
 
 - name: "Centos7 disable selinux"
   selinux: state=disabled
