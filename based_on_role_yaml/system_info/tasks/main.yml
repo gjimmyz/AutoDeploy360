@@ -3,7 +3,8 @@
 - include_tasks: system_info.yaml
 
 - name: Include CentOS tasks
-  include_tasks: ../files/centos_tasks.yaml
+  #include_tasks: ../files/centos_tasks.yaml
+  include_tasks: ../files/init_for_Centos7.yaml
   when: "'CentOS' in os_version.stdout"
 
 - name: Include Ubuntu tasks

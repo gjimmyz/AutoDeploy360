@@ -1,0 +1,9 @@
+TYPE=Ethernet
+BOOTPROTO=static
+NAME={{ ansible_default_ipv4.interface }}
+DEVICE={{ ansible_default_ipv4.interface }}
+ONBOOT=yes
+IPADDR={{ ansible_default_ipv4.address }}
+NETMASK=255.255.255.0
+GATEWAY={{ ansible_default_ipv4.gateway }}
+DNS1=114.114.114.114

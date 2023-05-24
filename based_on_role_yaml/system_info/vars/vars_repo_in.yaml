@@ -1,0 +1,8 @@
+baseurl_base: "http://10.21.254.79:8081/repository/mirrors-ustc-centos/$releasever/os/$basearch/"
+gpgkey_base: "http://10.21.254.79:8081/repository/mirrors-ustc-centos/RPM-GPG-KEY-CentOS-7"
+baseurl_updates: "http://10.21.254.79:8081/repository/mirrors-ustc-centos/$releasever/updates/$basearch/"
+gpgkey_updates: "http://10.21.254.79:8081/repository/mirrors-ustc-centos/RPM-GPG-KEY-CentOS-7"
+baseurl_extras: "http://10.21.254.79:8081/repository/mirrors-ustc-centos/$releasever/extras/$basearch/"
+gpgkey_extras: "http://10.21.254.79:8081/repository/mirrors-ustc-centos/RPM-GPG-KEY-CentOS-7"
+baseurl_epel: "http://10.21.254.79:8081/repository/mirrors-ustc-epel/7Server/$basearch"
+gpgkey_epel: "http://10.21.254.79:8081/repository/mirrors-ustc-epel/RPM-GPG-KEY-EPEL-7"
