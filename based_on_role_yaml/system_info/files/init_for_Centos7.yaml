@@ -1,4 +1,4 @@
-- name: Include vars
+- name: "Centos7 Include vars"
   include_vars: ../vars/system_info_var.yaml
 
 - name: "Centos7 disable selinux"
@@ -6,6 +6,10 @@
 
 - name: "Centos7 disable firewalld"
   service: name=firewalld state=stopped enabled=no
+
+- name: Set Shanghai timezone
+  timezone:
+    name: Asia/Shanghai
 
 - name: "Centos7 Configure sudoers file for user user"
   ansible.builtin.lineinfile:
@@ -86,7 +90,7 @@
     path: /var/cache/yum/.yum-check-internet-metadata-lock
   register: yum_check_internet_metadata_lock_file_stat
 
-- name: "Check if internet is available"
+- name: "Centos7 Check if internet is available"
   command: "ping -c 1 {{ internet_check_ip }}"
   register: internet_access
   ignore_errors: true
@@ -120,7 +124,7 @@
   when: is_internet_available is defined
 
 - block:
-    - name: "Set up cron job for time synchronization for internet hosts"
+    - name: "Centos7 Set up cron job for time synchronization for internet hosts"
       cron:
         name: "Sync time every hour"
         minute: "0"
@@ -130,7 +134,7 @@
   when: is_internet_available is defined and is_internet_available
 
 - block:
-    - name: "Delete server lines in ntp.conf"
+    - name: "Centos7 Delete server lines in ntp.conf"
       lineinfile:
         dest: /etc/ntp.conf
         regex: '^server [0-4].centos.pool.ntp.org iburst'
@@ -138,7 +142,7 @@
         backup: yes
         backrefs: yes
 
-    - name: "Add internal ntp servers"
+    - name: "Centos7 Add internal ntp servers"
       blockinfile:
         path: /etc/ntp.conf
         block: |
@@ -146,7 +150,7 @@
           server {{ ntp_server_2 }} iburst
         register: ntp_config_update
 
-    - name: "Restart ntpd service"
+    - name: "Centos7 Restart ntpd service"
       systemd:
         state: restarted
         daemon_reload: yes
@@ -209,17 +213,17 @@
   command: tuned-adm profile network-latency
   when: current_tuned_profile.stdout != "network-latency"
 
-- name: "Check if network configuration has been applied"
+- name: "Centos7 Check if network configuration has been applied"
   stat:
     path: /var/lib/network_config_applied
   register: network_config_applied
 
-- name: "Gather networking facts"
+- name: "Centos7 Gather networking facts"
   setup:
     gather_subset: network
   when: not network_config_applied.stat.exists
 
-- name: "Reset connection"
+- name: "Centos7 Reset connection"
   meta: reset_connection
   when: not network_config_applied.stat.exists
 
@@ -229,7 +233,7 @@
     dest: "/etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}"
   when: not network_config_applied.stat.exists
 
-- name: Restart network
+- name: "Centos7 Restart network"
   command: systemctl restart network
   when: not network_config_applied.stat.exists
 

@@ -38,7 +38,6 @@
   changed_when: >
     old_system_info is failed or
     (old_system_info['content'] | b64decode != system_info)
-
 #- name: Include CentOS tasks
 #  include_tasks: ../files/centos_tasks.yaml
 #  include_tasks: init_for_Centos7.yaml

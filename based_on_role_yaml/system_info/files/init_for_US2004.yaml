@@ -1,0 +1,305 @@
+- name: Include vars
+  include_vars: ../vars/var_for_US2004.yaml
+
+- name: Configure sudoers file for user
+  ansible.builtin.lineinfile:
+    dest: /etc/sudoers
+    regexp: '^{{ ssh_user }}'
+    line: '{{ ssh_user }} ALL=(ALL) NOPASSWD: ALL'
+    state: present
+    validate: 'visudo -cf %s'
+
+- name: Set vm.swappiness to 0 using sysctl
+  ansible.builtin.sysctl:
+    name: vm.swappiness
+    value: '0'
+    state: present
+    sysctl_set: yes
+    reload: yes
+
+- name: Ensure vm.swappiness is set in sysctl.conf
+  ansible.builtin.lineinfile:
+    path: /etc/sysctl.conf
+    regexp: '^vm.swappiness[[:space:]]?='
+    line: 'vm.swappiness = 0'
+
+- name: Check if /etc/rc.local file exists
+  ansible.builtin.stat:
+    path: /etc/rc.local
+  register: rc_local_stat
+
+- name: Ensure /etc/rc.local file exists and has correct shebang
+  ansible.builtin.copy:
+    dest: /etc/rc.local
+    content: "#!/bin/sh -e\n"
+    mode: '0755'
+    force: no
+  when: not rc_local_stat.stat.exists
+
+- name: Insert command into /etc/rc.local
+  ansible.builtin.blockinfile:
+    path: /etc/rc.local
+    block: |
+      #
+      # rc.local
+      #
+      # This script is executed at the end of each multiuser runlevel.
+      # Make sure that the script will "exit 0" on success or any other
+      # value on error.
+      #
+      # In order to enable or disable this script just change the execution
+      # bits.
+      #
+      # By default this script does nothing.
+      exit 0
+    insertafter: BOF
+    marker: "# {mark} ANSIBLE MANAGED BLOCK"
+
+- name: Check if lock file exists
+  stat:
+    path: /var/cache/apt/.update-lock
+  register: lock_file_stat
+
+- name: Check last update
+  stat:
+    path: /var/cache/apt/pkgcache.bin
+  register: apt_cache_stat
+  when: lock_file_stat.stat.exists
+
+- name: Update apt cache if it's outdated or lock file does not exist
+  command: apt-get update
+  when: not lock_file_stat.stat.exists or (ansible_date_time.epoch | int - apt_cache_stat.stat.mtime | int > 3600)
+
+- name: Create lock file
+  file:
+    path: /var/cache/apt/.update-lock
+    state: touch
+  when: not lock_file_stat.stat.exists or (ansible_date_time.epoch | int - lock_file_stat.stat.mtime | int > 3600)
+
+- name: Set Shanghai timezone
+  timezone:
+    name: Asia/Shanghai
+
+- name: Install base package
+  apt:
+    name:
+      - iftop
+      - iotop
+      - atop
+      - vim
+      - net-tools
+      - samba
+      - smbclient
+      - ntp
+      - ntpdate
+      - nfs-kernel-server
+      - nfs-common
+      - libssl-dev
+      - libffi-dev
+      - libaio-dev
+      - liblzma-dev
+      - libbz2-dev
+      - libncurses-dev
+      - libgdbm-dev
+      - libsqlite3-dev
+      - tk-dev
+      - libreadline-dev
+      - libarchive-dev
+      - libjansson-dev
+      - libacl1-dev
+      - exfat-utils
+    state: present
+
+- name: Set up cron job for time synchronization
+  cron:
+    name: "Sync time every hour"
+    minute: "0"
+    hour: "*"
+    user: root
+    job: "{{ ntp_cron_job }}"
+
+- name: Check sleep, suspend, hibernate, and hybrid-sleep targets
+  shell: "systemctl status {{ item }} | grep -q 'masked'"
+  loop:
+    - sleep.target
+    - suspend.target
+    - hibernate.target
+    - hybrid-sleep.target
+  register: service_status
+  changed_when: false
+  failed_when: service_status.rc != 0 and service_status.rc != 1
+
+- name: Mask sleep, suspend, hibernate, and hybrid-sleep targets if needed
+  block:
+    - name: Mask targets
+      command: "systemctl mask {{ item }}"
+      loop: "{{ service_status.results | rejectattr('rc', 'eq', 0) | map(attribute='item') | list }}"
+      when: inventory_hostname == "localhost"
+      register: mask_targets
+      changed_when: mask_targets.rc == 0
+  when: service_status.results | rejectattr('rc', 'eq', 0) | list | length > 0
+
+- name: Targets already masked
+  debug:
+    msg: "All targets are already masked"
+  when: service_status.results | rejectattr('rc', 'eq', 0) | list | length == 0
+  changed_when: false
+
+- name: Ignore lid switch when laptop is closed
+  lineinfile:
+    path: /etc/systemd/logind.conf
+    regexp: "^#?HandleLidSwitch="
+    line: "HandleLidSwitch=ignore"
+    backrefs: yes
+
+- name: Backup smb.conf file
+  command: cp /etc/samba/smb.conf /etc/samba/smb.conf.bak
+  args:
+    creates: /etc/samba/smb.conf.bak
+  register: backup_result
+
+- name: Check if smb.conf file needs to be cleared
+  stat:
+    path: /etc/samba/smb.conf
+  register: smb_conf_stat
+
+- name: Clear smb.conf file if not empty
+  copy:
+    content: ""
+    dest: /etc/samba/smb.conf
+  when: backup_result.changed and smb_conf_stat.stat.size > 0
+  register: clear_smb_conf
+  changed_when: clear_smb_conf.changed
+
+- name: smb.conf file already clear
+  debug:
+    msg: "smb.conf file is already clear"
+  when: not backup_result.changed or (backup_result.changed and smb_conf_stat.stat.size == 0)
+  changed_when: false
+
+- name: Check if samba user scadmin exists
+  command: smbpasswd -e "{{ ssh_user }}"
+  register: samba_user_check
+  changed_when: false
+  failed_when: samba_user_check.rc != 0 and samba_user_check.rc != 1
+
+- name: Create samba user scadmin if not exists
+  block:
+    - name: Create samba user
+      shell: "echo -e '{{ samba_user_password }}' | smbpasswd -a '{{ ssh_user }}' -s"
+      args:
+        executable: /bin/bash
+      register: create_samba_user
+      changed_when: create_samba_user.rc == 0
+  when: samba_user_check.rc != 0
+
+- name: Samba user scadmin already exists
+  debug:
+    msg: 'Samba user "{{ ssh_user }}" already exists'
+  when: samba_user_check.rc == 0
+  changed_when: false
+
+- name: Add NFS share to /etc/exports
+  lineinfile:
+    path: /etc/exports
+    line: "/home/{{ ssh_user }} *(rw,no_root_squash,async)"  
+    state: present
+    create: yes
+    backup: yes
+    mode: "0644"
+  register: nfs_export_result
+  changed_when: nfs_export_result.changed
+
+- name: Export NFS shares
+  command: exportfs -a
+  when: nfs_export_result.changed
+
+- name: Write samba config to smb.conf file
+  blockinfile:
+    path: /etc/samba/smb.conf
+    block: |
+      [global]
+      workgroup = SAMBA
+      security = user
+      passdb backend = tdbsam
+      printing = cups
+      printcap name = cups
+      load printers = yes
+      cups options = raw
+
+      [scadmin_home]
+      valid users = "{{ ssh_user }}"
+      path = /data
+      read only = no
+      browseable = yes
+      guest ok = no
+  register: samba_config_update
+
+- name: Create directory and set permissions
+  file:
+    path: /data
+    state: directory
+    mode: '0755'
+    owner: "{{ ssh_user }}"
+    group: "{{ ssh_user }}"
+
+- name: Restart samba
+  systemd:
+    name: smbd
+    state: restarted
+  when:
+    - samba_config_update.changed
+
+- name: Check if network configuration was applied
+  stat:
+    path: /var/lib/netplan_applied
+  register: netplan_applied
+
+- name: Collect networking facts
+  setup:
+    gather_subset: network
+  when: not netplan_applied.stat.exists
+
+- name: Reset connection
+  meta: reset_connection
+  when: not netplan_applied.stat.exists
+
+- name: Configure static IP
+  template:
+    src: netplan_template.j2
+    dest: /etc/netplan/01-netcfg.yaml
+  when: not netplan_applied.stat.exists
+
+- name: Apply network configuration
+  command: netplan apply
+  when: not netplan_applied.stat.exists
+
+- name: Create a flag file after network configuration
+  file:
+    path: /var/lib/netplan_applied
+    state: touch
+  when: not netplan_applied.stat.exists
+
+- name: Check if lock file exists
+  stat:
+    path: /var/lib/reboot.lock
+  register: lock_file_stat
+
+- name: Create lock file
+  file:
+    path: /var/lib/reboot.lock
+    state: touch
+  when:
+    - not lock_file_stat.stat.exists
+    - (ansible_facts['uptime_seconds'] | int) <= 86400
+
+- name: Restart machine if Ubuntu20 and no lock file exists and uptime < 1 day
+  command: /sbin/reboot
+  async: 0
+  poll: 0
+  failed_when: false
+  ignore_errors: true
+  ignore_unreachable: true
+  when:
+    - not lock_file_stat.stat.exists
+    - (ansible_facts['uptime_seconds'] | int) <= 86400

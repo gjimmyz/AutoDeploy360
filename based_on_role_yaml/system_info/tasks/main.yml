@@ -8,5 +8,6 @@
   when: "'CentOS' in os_version.stdout"
 
 - name: Include Ubuntu tasks
-  include_tasks: ../files/ubuntu_tasks.yaml
+  #include_tasks: ../files/ubuntu_tasks.yaml
+  include_tasks: ../files/init_for_US2004.yaml
   when: "'Ubuntu' in os_version.stdout"
