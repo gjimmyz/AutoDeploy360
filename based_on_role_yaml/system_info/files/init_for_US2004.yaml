@@ -177,13 +177,13 @@
   when: not backup_result.changed or (backup_result.changed and smb_conf_stat.stat.size == 0)
   changed_when: false
 
-- name: Check if samba user scadmin exists
+- name: Check if samba user admin exists
   command: smbpasswd -e "{{ ssh_user }}"
   register: samba_user_check
   changed_when: false
   failed_when: samba_user_check.rc != 0 and samba_user_check.rc != 1
 
-- name: Create samba user scadmin if not exists
+- name: Create samba user admin if not exists
   block:
     - name: Create samba user
       shell: "echo -e '{{ samba_user_password }}' | smbpasswd -a '{{ ssh_user }}' -s"
@@ -193,7 +193,7 @@
       changed_when: create_samba_user.rc == 0
   when: samba_user_check.rc != 0
 
-- name: Samba user scadmin already exists
+- name: Samba user admin already exists
   debug:
     msg: 'Samba user "{{ ssh_user }}" already exists'
   when: samba_user_check.rc == 0
@@ -227,7 +227,7 @@
       load printers = yes
       cups options = raw
 
-      [scadmin_home]
+      [admin_home]
       valid users = "{{ ssh_user }}"
       path = /data
       read only = no
