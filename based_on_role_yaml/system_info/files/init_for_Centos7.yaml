@@ -130,7 +130,7 @@
         minute: "0"
         hour: "*"
         user: root
-        job: "/usr/sbin/ntpdate stdtime.gov.hk > /dev/null 2>&1"
+        job: "{{ ntp_cron_job }}"
   when: is_internet_available is defined and is_internet_available
 
 - block:

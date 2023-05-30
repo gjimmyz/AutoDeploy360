@@ -24,6 +24,17 @@
   debug:
     msg: "{{ system_info }}"
 
+- name: Check if system_info.txt exists
+  stat:
+    path: /var/lib/system_info.txt
+  register: system_info_file_stat
+
+- name: Create system_info.txt if it does not exist
+  file:
+    path: /var/lib/system_info.txt
+    state: touch
+  when: not system_info_file_stat.stat.exists
+
 - name: Read system information from file
   slurp:
     src: /var/lib/system_info.txt
