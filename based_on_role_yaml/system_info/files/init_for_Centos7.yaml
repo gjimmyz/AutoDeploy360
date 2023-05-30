@@ -179,29 +179,7 @@
 
 - name: "Centos7 Install base software"
   yum:
-    name:
-      - iftop
-      - zip
-      - python2-pip
-      - lrzsz
-      - wget
-      - gcc
-      - gcc-c++
-      - autoconf
-      - automake
-      - make
-      - iotop
-      - atop
-      - vim
-      - net-tools
-      - samba
-      - samba-client
-      - ntp
-      - ntpdate
-      - nfs-utils
-      - python3
-      - python3-pip
-      - tuned
+    name: "{{ software_list }}"
     state: present
 
 - name: "Centos7 Get current tuned profile"

@@ -3,3 +3,27 @@ ntp_server_1: 10.xxx.xxx.42
 ntp_server_2: 10.xxx.xxx.102
 internet_check_ip: 114.114.114.114
 ntp_cron_job: '/usr/sbin/ntpdate stdtime.gov.hk > /dev/null 2>&1'
+software_list:
+  - iftop
+  - zip
+  - python2-pip
+  - lrzsz
+  - wget
+  - gcc
+  - gcc-c++
+  - autoconf
+  - automake
+  - make
+  - iotop
+  - atop
+  - vim
+  - net-tools
+  - samba
+  - samba-client
+  - ntp
+  - ntpdate
+  - nfs-utils
+  - python3
+  - python3-pip
+  - tuned
+  - nethogs
