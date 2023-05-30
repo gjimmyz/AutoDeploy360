@@ -2,3 +2,4 @@ ssh_user: user
 ntp_server_1: 10.xxx.xxx.42
 ntp_server_2: 10.xxx.xxx.102
 internet_check_ip: 114.114.114.114
+ntp_cron_job: '/usr/sbin/ntpdate stdtime.gov.hk > /dev/null 2>&1'
