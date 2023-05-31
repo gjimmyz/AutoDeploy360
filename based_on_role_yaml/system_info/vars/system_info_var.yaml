@@ -1,4 +1,4 @@
-lock_file_timeout: 3600
+lock_file_timeout: 86400
 ssh_user: user
 ntp_server_1: 10.xxx.xxx.42
 ntp_server_2: 10.xxx.xxx.102
