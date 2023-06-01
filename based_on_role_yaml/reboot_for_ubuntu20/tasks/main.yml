@@ -1,0 +1,26 @@
+---
+# tasks file for reboot_for_ubuntu20
+- name: Check if lock file exists
+  stat:
+    path: /var/lib/reboot.lock
+  register: lock_file_stat
+
+- name: Create lock file
+  file:
+    path: /var/lib/reboot.lock
+    state: touch
+  when:
+    - not lock_file_stat.stat.exists
+    - (ansible_facts['uptime_seconds'] | int) <= 86400
+
+- name: Restart machine if Ubuntu20 and no lock file exists and uptime < 1 day
+  command: /sbin/reboot
+  async: 0
+  poll: 0
+  failed_when: false
+  ignore_errors: true
+  ignore_unreachable: true
+  when:
+    - not lock_file_stat.stat.exists
+    - (ansible_facts['uptime_seconds'] | int) <= 86400
+

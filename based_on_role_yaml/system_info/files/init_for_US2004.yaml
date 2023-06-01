@@ -88,8 +88,6 @@
       - atop
       - vim
       - net-tools
-      - samba
-      - smbclient
       - ntp
       - ntpdate
       - nfs-kernel-server
@@ -152,53 +150,6 @@
     line: "HandleLidSwitch=ignore"
     backrefs: yes
 
-- name: Backup smb.conf file
-  command: cp /etc/samba/smb.conf /etc/samba/smb.conf.bak
-  args:
-    creates: /etc/samba/smb.conf.bak
-  register: backup_result
-
-- name: Check if smb.conf file needs to be cleared
-  stat:
-    path: /etc/samba/smb.conf
-  register: smb_conf_stat
-
-- name: Clear smb.conf file if not empty
-  copy:
-    content: ""
-    dest: /etc/samba/smb.conf
-  when: backup_result.changed and smb_conf_stat.stat.size > 0
-  register: clear_smb_conf
-  changed_when: clear_smb_conf.changed
-
-- name: smb.conf file already clear
-  debug:
-    msg: "smb.conf file is already clear"
-  when: not backup_result.changed or (backup_result.changed and smb_conf_stat.stat.size == 0)
-  changed_when: false
-
-- name: Check if samba user admin exists
-  command: smbpasswd -e "{{ ssh_user }}"
-  register: samba_user_check
-  changed_when: false
-  failed_when: samba_user_check.rc != 0 and samba_user_check.rc != 1
-
-- name: Create samba user admin if not exists
-  block:
-    - name: Create samba user
-      shell: "echo -e '{{ samba_user_password }}' | smbpasswd -a '{{ ssh_user }}' -s"
-      args:
-        executable: /bin/bash
-      register: create_samba_user
-      changed_when: create_samba_user.rc == 0
-  when: samba_user_check.rc != 0
-
-- name: Samba user admin already exists
-  debug:
-    msg: 'Samba user "{{ ssh_user }}" already exists'
-  when: samba_user_check.rc == 0
-  changed_when: false
-
 - name: Add NFS share to /etc/exports
   lineinfile:
     path: /etc/exports
@@ -213,42 +164,6 @@
 - name: Export NFS shares
   command: exportfs -a
   when: nfs_export_result.changed
-
-- name: Write samba config to smb.conf file
-  blockinfile:
-    path: /etc/samba/smb.conf
-    block: |
-      [global]
-      workgroup = SAMBA
-      security = user
-      passdb backend = tdbsam
-      printing = cups
-      printcap name = cups
-      load printers = yes
-      cups options = raw
-
-      [admin_home]
-      valid users = "{{ ssh_user }}"
-      path = /data
-      read only = no
-      browseable = yes
-      guest ok = no
-  register: samba_config_update
-
-- name: Create directory and set permissions
-  file:
-    path: /data
-    state: directory
-    mode: '0755'
-    owner: "{{ ssh_user }}"
-    group: "{{ ssh_user }}"
-
-- name: Restart samba
-  systemd:
-    name: smbd
-    state: restarted
-  when:
-    - samba_config_update.changed
 
 - name: Check if network configuration was applied
   stat:
@@ -279,27 +194,3 @@
     path: /var/lib/netplan_applied
     state: touch
   when: not netplan_applied.stat.exists
-
-- name: Check if lock file exists
-  stat:
-    path: /var/lib/reboot.lock
-  register: lock_file_stat
-
-- name: Create lock file
-  file:
-    path: /var/lib/reboot.lock
-    state: touch
-  when:
-    - not lock_file_stat.stat.exists
-    - (ansible_facts['uptime_seconds'] | int) <= 86400
-
-- name: Restart machine if Ubuntu20 and no lock file exists and uptime < 1 day
-  command: /sbin/reboot
-  async: 0
-  poll: 0
-  failed_when: false
-  ignore_errors: true
-  ignore_unreachable: true
-  when:
-    - not lock_file_stat.stat.exists
-    - (ansible_facts['uptime_seconds'] | int) <= 86400

@@ -1,0 +1,7 @@
+# roles_to_include.yml
+roles:
+  - system_info
+  #- install_samba_for_centos7
+  - install_samba_for_ubuntu20
+  - reboot_for_ubuntu20
+  - reboot_for_centos7

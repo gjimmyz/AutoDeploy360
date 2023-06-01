@@ -7,15 +7,32 @@
     - name: Execute tasks create_hosts_yaml
       include_tasks: "/root/scripts/based_on_role_yaml/get_real_can_loginhost_for_create_hosts_yaml/tasks/create_hosts_yaml"
 
-    #- name: Execute tasks system_info.yaml
-    #  include_tasks: "/root/scripts/based_on_role_yaml/system_info/tasks/system_info.yaml"
-
 - hosts: ubuntu_servers
   gather_facts: yes
-  roles:
-    - system_info
+  tasks:
+    - block:
+        - include_role:
+            name: system_info
+          when: "'system_info' in roles"
+
+        - include_role:
+            name: install_samba_for_ubuntu20
+          when: "'install_samba_for_ubuntu20' in roles"
+
+        - include_role:
+            name: reboot_for_ubuntu20
+          when: "'reboot_for_ubuntu20' in roles"
+      when: groups['ubuntu_servers'] | length > 0
 
 - hosts: centos_servers
   gather_facts: yes
-  roles:
-    - system_info
+  tasks:
+    - block:
+        - include_role:
+            name: system_info
+          when: "'system_info' in roles"
+
+        - include_role:
+            name: reboot_for_centos7
+          when: "'reboot_for_centos7' in roles"
+      when: groups['centos_servers'] | length > 0
