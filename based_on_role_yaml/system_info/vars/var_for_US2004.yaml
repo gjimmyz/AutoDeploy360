@@ -1,3 +1,2 @@
 ssh_user: admin
 ntp_cron_job: '/usr/sbin/ntpdate stdtime.gov.hk > /dev/null 2>&1'
-samba_user_password: "123456\\n123456"
