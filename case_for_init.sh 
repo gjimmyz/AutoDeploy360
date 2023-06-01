@@ -4,12 +4,13 @@ then
     while true
     do
         echo -e "
-        \033[31m 1|a|A 初始化+业务部署 \033[0m        
+        \033[31m 1|a|A 初始化+业务部署 \033[0m
         \033[32m 2|b|B 软件安装 \033[0m
-        \033[33m 3|c|C 优化 \033[0m        
+        \033[33m 3|c|C 优化 \033[0m
         \033[34m 4|d|D 进入管理系统 \033[0m
         \033[35m 5|e|E 进入github commit \033[0m
-        \033[36m 99|q|Q 退出 \033[0m        "
+        \033[36m 99|q|Q 退出 \033[0m
+        "
         read -p "请选择主菜单选项: " main_menu_choice
         case $main_menu_choice in
             1|a|A)
@@ -24,12 +25,11 @@ then
                     read -p "请选择二级菜单选项: " submenu_choice
                     case $submenu_choice in
                         1|a|A)
-                            #cd /root/scripts/ansible_yaml && `which ansible-playbook` sh_connect_for_all.yaml
-                            #cd /root/scripts/ansible_yaml && `which ansible-playbook` -i hosts.yaml system_info.yaml
-                            cd /root/scripts/based_on_role_yaml && ansible-playbook playbook_name.yaml
+                            cd /root/scripts/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['system_info','reboot_for_ubuntu20','reboot_for_centos7']"
                             ;;
                         2|b|B)
-                            echo "Hello World"
+                            cd /root/scripts/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['system_info','install_samba_for_ubuntu20','reboot_for_ubuntu20']"
+                            #echo "hello"
                             ;;
                         3|c|C)
                             break
@@ -58,11 +58,11 @@ then
                             while true
                             do
                                 echo -e "
-                                \033[31m 1|a|A xxx \033[0m
+                                \033[31m 1|a|A Install Samba \033[0m
                                 \033[32m 2|b|B xxxx \033[0m
                                 \033[33m 3|c|C xxx \033[0m
                                 \033[34m 4|d|D 返回主菜单 \033[0m
-                                \033[35m 99|q|Q 退出 \033[0m
+                                \033[35m 99|q|Q ���出 \033[0m
                                 "
                                 read -p "请选择子菜单选项: " three_menu_choice
                                 case $three_menu_choice in
