@@ -87,7 +87,7 @@
       cups options = raw
 
       [{{ samba_share_name }}]
-      valid users = "{{ user }}"
+      valid users = {{ user }}
       path = {{ samba_share_path }}
       read only = no
       browseable = yes

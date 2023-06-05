@@ -70,7 +70,7 @@
       cups options = raw
 
       [admin_home]
-      valid users = "{{ ssh_user }}"
+      valid users = {{ ssh_user }}
       path = /data
       read only = no
       browseable = yes
