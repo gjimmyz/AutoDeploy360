@@ -1,0 +1,3 @@
+ssh_user: admin
+pass: 123456
+samba_user_password: "123456\\n123456"

@@ -1,12 +1,3 @@
-- hosts: localhost
-  gather_facts: yes
-  tasks:
-    - name: Execute tasks in find_reachable_ip.yaml
-      include_tasks: "/root/scripts/based_on_role_yaml/check_ssh_conn_find_reachable_ip/tasks/find_reachable_ip.yaml"
-
-    - name: Execute tasks create_hosts_yaml
-      include_tasks: "/root/scripts/based_on_role_yaml/get_real_can_loginhost_for_create_hosts_yaml/tasks/create_hosts_yaml"
-
 - hosts: ubuntu_servers
   gather_facts: yes
   tasks:
@@ -31,6 +22,10 @@
         - include_role:
             name: system_info
           when: "'system_info' in roles"
+
+        - include_role:
+            name: install_samba_for_centos7
+          when: "'install_samba_for_centos7' in roles"
 
         - include_role:
             name: reboot_for_centos7
