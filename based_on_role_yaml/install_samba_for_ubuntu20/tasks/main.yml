@@ -94,3 +94,22 @@
     state: restarted
   when:
     - samba_config_update.changed
+
+- name: Test samba connection
+  shell: 'echo "{{ pass }}" | smbclient //localhost/{{ samba_share_name }} -U "{{ ssh_user }}" -c "mkdir testdir; put /etc/hosts testfile; get testfile; rm testfile; rmdir testdir"'
+  register: samba_test_result
+  changed_when: false
+
+- name: Show samba test result
+  debug:
+    var: samba_test_result.stdout_lines
+
+- name: Assert samba test success
+  assert:
+    that: samba_test_result.rc == 0
+    fail_msg: "Samba test failed with message: {{ samba_test_result.stderr }}"
+
+- name: Ensure smbclient is installed
+  apt:
+    name: smbclient
+    state: present
