@@ -86,15 +86,15 @@
       load printers = yes
       cups options = raw
 
-      [seq_home]
+      [{{ samba_share_name }}]
       valid users = "{{ user }}"
-      path = /home/seq
+      path = {{ samba_share_path }}
       read only = no
       browseable = yes
       guest ok = no
 
       #cli test demo
-      #smbclient //localhost/admin_home -U username
+      #smbclient //localhost/{{ samba_share_name }} -U username
   register: samba_config_update
 
 - name: Restart samba
