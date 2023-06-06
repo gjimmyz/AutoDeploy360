@@ -194,6 +194,19 @@
     name: "{{ software_list }}"
     state: present
 
+- name: Set limits
+  lineinfile:
+    dest: /etc/security/limits.conf
+    line: "{{ item }}"
+    state: present
+  loop:
+    - '*                soft    nofile           819200'
+    - '*                hard    nofile           819200'
+    - '*                soft    core             2048000'
+    - '*                hard    core             2048000'
+    - '*                soft    nproc            65535'
+    - '*                hard    nproc            65535'
+
 - name: "Centos7 Get current tuned profile"
   shell: "tuned-adm active | awk -F': ' '{print $2}'"
   register: current_tuned_profile
@@ -227,6 +240,9 @@
     state: restarted
   become: yes
   when: not network_config_applied.stat.exists and interface_configured.changed
+
+- name: Reset connection
+  meta: reset_connection
 
 - name: "Create a flag file after network configuration"
   file:

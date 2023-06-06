@@ -17,6 +17,21 @@
     sysctl_set: yes
     reload: yes
 
+- name: Set limits
+  lineinfile:
+    dest: /etc/security/limits.conf
+    line: "{{ item }}"
+    state: present
+  loop:
+    - '*                soft    nofile           819200'
+    - '*                hard    nofile           819200'
+    - 'root             soft    nofile           819200'
+    - 'root             hard    nofile           819200'
+    - '*                soft    core             2048000'
+    - '*                hard    core             2048000'
+    - '*                soft    nproc            65535'
+    - '*                hard    nproc            65535'
+
 - name: Ensure vm.swappiness is set in sysctl.conf
   ansible.builtin.lineinfile:
     path: /etc/sysctl.conf
