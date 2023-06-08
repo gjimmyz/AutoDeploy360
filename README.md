@@ -5,7 +5,7 @@ https://mp.weixin.qq.com/s?__biz=MzkzMzI0MDg5Ng==&mid=2247485657&idx=1&sn=fcb08a
 
 1、完成了的初始化(centos7和ubuntu20)  
 2、可以自由搭配初始化+软件部署(centos7和ubuntu20)  
-3、增加了check功能
+3、增加了check功能  
 4、待添加  
 
 ![Alt text](./images/WechatIMG3601.png)
