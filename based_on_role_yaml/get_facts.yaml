@@ -1,0 +1,42 @@
+---
+- hosts: all
+  tasks:
+    - name: Collect only facts returned by facter
+      setup:
+        gather_subset: '!all,!any'
+
+    - name: Copy system_info_var.yaml to remote
+      copy:
+        src: /root/scripts/based_on_role_yaml/system_info/vars/system_info_var.yaml
+        dest: /tmp/system_info_var.yaml
+      when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
+    
+    - name: Run check_centos7.py script on CentOS 7
+      script: /root/scripts/based_on_role_yaml/check_centos7.py
+      register: script_output
+      when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
+
+    - name: Write script output to local file for CentOS 7
+      local_action:
+        module: copy
+        content: "{{ script_output.stdout }}"
+        dest: "/tmp/file_centos7_{{ inventory_hostname }}"
+      when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
+
+    - name: Remove system_info_var.yaml from remote
+      file:
+        path: /tmp/system_info_var.yaml
+        state: absent
+      when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
+
+    - name: Run check_ubuntu20.py script on Ubuntu 20
+      script: /root/scripts/based_on_role_yaml/check_ubuntu20.py
+      register: script_output
+      when: ansible_facts['os_family'] == "Debian" and ansible_facts['lsb']['release'] == "20.04"
+
+    - name: Write script output to local file for Ubuntu 20
+      local_action:
+        module: copy
+        content: "{{ script_output.stdout }}"
+        dest: "/tmp/file_ubuntu20_{{ inventory_hostname }}"
+      when: ansible_facts['os_family'] == "Debian" and ansible_facts['lsb']['release'] == "20.04"

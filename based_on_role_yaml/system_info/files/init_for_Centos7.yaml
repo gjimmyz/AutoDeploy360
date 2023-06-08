@@ -109,6 +109,22 @@
     is_internet_available: "{{ internet_access.rc == 0 }}"
   when: internet_access is defined and 'rc' in internet_access
 
+- set_fact:
+    pip_index_url: "{{ pip_index_url_wai if is_internet_available else pip_index_url_nei }}"
+    pip_trusted_host: "{{ pip_trusted_host_wai if is_internet_available else pip_trusted_host_nei }}"
+  when: is_internet_available is defined  
+
+- name: Ensure .pip directory exists
+  file:
+    path: /root/.pip
+    state: directory
+
+- name: Configure pip
+  template:
+    src: pip.conf.j2
+    dest: /root/.pip/pip.conf
+  when: is_internet_available is defined and is_internet_available 
+
 - name: "Centos7 Load outernet repo vars"
   include_vars: ../vars/vars_repo_out.yaml
   when: is_internet_available is defined and is_internet_available
@@ -192,6 +208,18 @@
 - name: "Centos7 Install base software"
   yum:
     name: "{{ software_list }}"
+    state: present
+
+- name: Upgrade pip using pip
+  ansible.builtin.pip:
+    name: pip==20.3.4
+    state: present
+    executable: pip3
+
+- name: Install PyYAML using pip3
+  ansible.builtin.pip:
+    name: pyyaml
+    executable: pip3
     state: present
 
 - name: Set limits
