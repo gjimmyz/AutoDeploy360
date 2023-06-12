@@ -10,7 +10,6 @@ ntp_server_2: 10.xxx.xxx.102
 system_users:
   - user
   - admin_admin
-internet_check_ip: 8.8.8.8
 pid_ip_dir_path: /tmp/pid_dir
 pid_ip_file_path: "{{ pid_ip_dir_path }}/reachable_ips"
 cache_timeout: 300
