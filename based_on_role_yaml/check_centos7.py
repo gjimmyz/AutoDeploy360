@@ -90,9 +90,6 @@ def is_internal(ip):
     ip_obj = ipaddress.ip_address(ip)
     return any(ip_obj in ipaddress.ip_network(n) for n in private_networks)
 
-import socket
-import ipaddress
-
 def is_internal(ip):
     private_networks = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
     ip_obj = ipaddress.ip_address(ip)
