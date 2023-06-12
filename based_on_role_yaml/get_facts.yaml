@@ -11,8 +11,8 @@
         dest: /tmp/system_info_var.yaml
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
     
-    - name: Run check_centos7.py script on CentOS 7
-      script: /root/scripts/based_on_role_yaml/check_centos7.py
+    - name: Run check_all.py script on CentOS 7
+      script: /root/scripts/based_on_role_yaml/check_all.py
       register: script_output
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
 
@@ -29,8 +29,8 @@
         state: absent
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
 
-    - name: Run check_ubuntu20.py script on Ubuntu 20
-      script: /root/scripts/based_on_role_yaml/check_ubuntu20.py
+    - name: Run check_all.py script on Ubuntu 20
+      script: /root/scripts/based_on_role_yaml/check_all.py
       register: script_output
       when: ansible_facts['os_family'] == "Debian" and ansible_facts['lsb']['release'] == "20.04"
 

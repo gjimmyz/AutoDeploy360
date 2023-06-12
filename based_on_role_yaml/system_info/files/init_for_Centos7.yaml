@@ -216,9 +216,9 @@
     state: present
     executable: pip3
 
-- name: Install PyYAML using pip3
+- name: Install xxx using pip3
   ansible.builtin.pip:
-    name: pyyaml
+    name: pyyaml,distro
     executable: pip3
     state: present
 
