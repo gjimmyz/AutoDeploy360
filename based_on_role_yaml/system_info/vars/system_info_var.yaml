@@ -2,7 +2,8 @@ lock_file_timeout: 86400
 ssh_user: user
 ntp_server_1: 10.xxx.xxx.42
 ntp_server_2: 10.xxx.xxx.102
-internet_check_ip: 8.8.8.8
+internet_check_ips: ["8.8.8.8", "1.1.1.1", "202.96.209.5"]
+ping_num: 3
 pip_index_url_wai: 'http://mirrors.aliyun.com/pypi/simple/'
 pip_trusted_host_wai: 'mirrors.aliyun.com'
 pip_index_url_nei: 'http://10.xxx.xxx.79:8081/repository/python-pip/simple'
