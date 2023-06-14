@@ -3,7 +3,7 @@
 #--------------------------------------------------
 #Author:gong_zheng
 #Email:gong_zheng@mingmatechs.com
-#FileName:check_centos7.py
+#FileName:check_all.py
 #Function:
 #Version:1.0
 #Created:2023-06-06
