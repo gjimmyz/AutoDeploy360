@@ -121,6 +121,9 @@
       - libjansson-dev
       - libacl1-dev
       - exfat-utils
+      - python3-pip
+      - tuned
+      - iperf3
     state: present
 
 - name: Set up cron job for time synchronization

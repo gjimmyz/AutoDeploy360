@@ -1,0 +1,10 @@
+This document explains the content of the failed SSH test results.
+{% for item in failed_ssh %}
+Item:
+  - User: {{ item.item[0] }}
+  - Index: {{ item.item[1] }}
+  - Message: {{ item.msg }}
+  - Return code: {{ item.rc }}
+  - Error: {{ item.stderr }}
+
+{% endfor %}

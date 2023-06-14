@@ -16,6 +16,7 @@ import socket
 import ipaddress
 import platform
 import distro
+from collections import defaultdict
 
 # 检查SELinux状态
 def check_selinux():
@@ -109,13 +110,38 @@ def check_repo():
             print('Repo file does not contain correct entries for [base_new]')
     except FileNotFoundError:
         print('Repo file not found')
-
     result = subprocess.run(['yum', 'makecache'], stdout=subprocess.PIPE)
     last_line = result.stdout.decode().strip().split('\n')[-1]
     if 'Metadata Cache Created' in last_line:
         print('8、There are four warehouses: base_new、epel_new、extras_new、updates_new')
     else:
         print('Yum makecache was not successful')
+
+# 检查ubuntu20仓库
+def check_ubuntu20_repo():
+    try:
+        with open('/etc/apt/sources.list', 'r') as file:
+            sources = file.readlines()
+        repo_urls = set()
+        for source in sources:
+            if source.startswith('deb'):
+                url = source.split()[1]
+                repo_urls.add(url)
+        for url in repo_urls:
+            domain = url.split('//')[1].split('/')[0]
+            try:
+                ip = socket.gethostbyname(domain)
+                print(f'8、Repo file contains correct entries for internet {url}')
+                break
+            except socket.gaierror:
+                print(f'Could not resolve {domain}')
+        result = subprocess.run(['apt-get', 'update'], stdout=subprocess.PIPE)
+        update_output = result.stdout.decode()
+        hit_lines = [line for line in update_output.split('\n') if line.startswith('Hit:')]
+        repo_names = [line.split()[2].split('/')[-1] for line in hit_lines] # Note: The index is changed here to 2 to get the name of the warehouse
+        print(f'8、There are {len(hit_lines)} warehouses: {"、".join(repo_names)}')
+    except FileNotFoundError:
+        print('sources.list file not found')
 
 # 检查软件安装
 def check_software():
@@ -130,7 +156,6 @@ def check_software():
             installed_softwares.append(software)
         else:
             not_installed_softwares.append(software)
-
     if installed_softwares:
         num_lines = len(installed_softwares) // 6 + (len(installed_softwares) % 6 > 0)
         for i in range(num_lines):
@@ -187,13 +212,14 @@ def check_ntp_internal():
 
 # 检查dhcpd进程
 def check_dhcpd_process():
-    result = subprocess.run(['pgrep', '-x', 'dhcpd'], stdout=subprocess.PIPE)
-    if result.stdout:
-        print("The dhcpd process is running.")
-        return True
-    else:
-        print("12、The dhcpd process is not running.")
-        return False
+    dhcp_processes = ['dhcpd', 'dhclient']
+    for process in dhcp_processes:
+        result = subprocess.run(['pgrep', '-x', process], stdout=subprocess.PIPE)
+        if result.stdout:
+            print(f"The {process} process is running.")
+            return True
+    print("12、The dhcpd or dhclient process is not running.")
+    return False
 
 # 检查并打印网络配置
 def check_network_config():
@@ -214,6 +240,23 @@ def check_network_config():
                             if any(key in line for key in ["IPADDR", "NETMASK", "GATEWAY", "DNS"]):
                                 print(line.strip())
 
+# 检查并打印网络配置
+def check_ubuntu20_network_config():
+    # 检查所有网络接口配置文件
+    config_dir = "/etc/netplan"
+    for config_file in os.listdir(config_dir):
+        if config_file.endswith(".yaml"):
+            with open(os.path.join(config_dir, config_file), 'r') as file:
+                config_dict = yaml.safe_load(file)
+            for interface, settings in config_dict['network']['ethernets'].items():
+                if settings.get('dhcp4') is True:
+                    print(f"{interface} is configured with DHCP({config_file}).")
+                else:
+                    print(f"{interface} is configured with a static IP({config_file}). Configuration details:")
+                    for key, value in settings.items():
+                        if key in ['addresses', 'gateway4', 'nameservers']:
+                            print(f"{key.upper()}: {value}")
+
 # 检查pip包
 def check_pip_packages():
     result = subprocess.run(['pip3', 'list'], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
@@ -225,7 +268,14 @@ def check_pip_packages():
         if match:
             package_name_version = match.group(1) + " (" + match.group(2) + ")"
             installed_packages.append(package_name_version)
-    print('14、' + '、'.join(installed_packages))
+    num_lines = len(installed_packages) // 5 + (len(installed_packages) % 5 > 0)
+    for i in range(num_lines):
+        print('14、' + '、'.join(installed_packages[i*5:(i+1)*5]))
+
+# 使用
+def check_ubuntu20_network():
+    if not check_dhcpd_process():
+        check_ubuntu20_network_config()
 
 # 使用
 def check_static_ip():
@@ -265,11 +315,13 @@ if platform.system() == 'Linux':
         check_sudo()
         check_UseDNS()
         check_swappiness()
+        check_ubuntu20_repo()
         check_file_descriptor()
-        #check_tuned()
+        check_tuned()
         if not check_ntp_external():
             check_ntp_internal()
-        #check_pip_packages()
+        check_ubuntu20_network()
+        check_pip_packages()
         
     else:
         print('Unsupported Linux distribution')

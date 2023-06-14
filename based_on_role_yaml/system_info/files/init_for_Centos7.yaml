@@ -7,7 +7,7 @@
 - name: "Centos7 disable firewalld"
   service: name=firewalld state=stopped enabled=no
 
-- name: Set Shanghai timezone
+- name: "Centos7 Set Shanghai timezone"
   timezone:
     name: Asia/Shanghai
 
@@ -123,12 +123,12 @@
     pip_trusted_host: "{{ pip_trusted_host_wai if is_internet_available else pip_trusted_host_nei }}"
   when: is_internet_available is defined
 
-- name: Ensure .pip directory exists
+- name: "Centos7 Ensure .pip directory exists"
   file:
     path: /root/.pip
     state: directory
 
-- name: Configure pip
+- name: "Centos7 Configure pip"
   template:
     src: pip.conf.j2
     dest: /root/.pip/pip.conf
@@ -219,19 +219,19 @@
     name: "{{ software_list }}"
     state: present
 
-- name: Upgrade pip using pip
+- name: "Centos7 Upgrade pip using pip"
   ansible.builtin.pip:
     name: pip==20.3.4
     state: present
     executable: pip3
 
-- name: Install xxx using pip3
+- name: "Centos7 Install xxx using pip3"
   ansible.builtin.pip:
     name: pyyaml,distro
     executable: pip3
     state: present
 
-- name: Set limits
+- name: "Centos7 Set limits"
   lineinfile:
     dest: /etc/security/limits.conf
     line: "{{ item }}"
@@ -253,35 +253,35 @@
   command: tuned-adm profile network-latency
   when: current_tuned_profile.stdout != "network-latency"
 
-- name: "Check if DHCP is used"
+- name: "Centos7 Check if DHCP is used"
   shell: grep -i '^BOOTPROTO=dhcp' /etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}
   register: dhcp_used
   failed_when: false
   changed_when: false
 
-- name: "Check if network configuration has been applied"
+- name: "Centos7 Check if network configuration has been applied"
   stat:
     path: /var/lib/network_config_applied
   register: network_config_applied
 
-- name: "Configure static IP"
+- name: "Centos7 Configure static IP"
   template:
     src: ifcfg-template.j2
     dest: "/etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}"
   register: interface_configured
   when: not network_config_applied.stat.exists and dhcp_used.rc == 0
 
-- name: "Restart network"
+- name: "Centos7 Restart network"
   systemd:
     name: network
     state: restarted
   become: yes
   when: not network_config_applied.stat.exists and interface_configured.changed
 
-- name: Reset connection
+- name: "Centos7 Reset connection"
   meta: reset_connection
 
-- name: "Create a flag file after network configuration"
+- name: "Centos7 Create a flag file after network configuration"
   file:
     path: /var/lib/network_config_applied
     state: touch
