@@ -210,14 +210,27 @@ def check_ntp_internal():
     result = subprocess.run(['ntpq', '-pn'], stdout=subprocess.PIPE)
     print('ntpq -pn:', result.stdout.decode().strip())
 
-# 检查dhcpd进程
+def get_interface_by_pid(pid):
+    result = subprocess.run(['ps', '-p', pid, '-o', 'args'], stdout=subprocess.PIPE, universal_newlines=True)
+    args = result.stdout.strip()
+    match = re.search(r'(\w+)$', args)  # match the last word in the args line, which should be the interface name
+    if match:
+        return match.group(0)
+    return None
+
 def check_dhcpd_process():
     dhcp_processes = ['dhcpd', 'dhclient']
     for process in dhcp_processes:
-        result = subprocess.run(['pgrep', '-x', process], stdout=subprocess.PIPE)
+        result = subprocess.run(['pgrep', '-x', process], stdout=subprocess.PIPE, universal_newlines=True)
         if result.stdout:
-            print(f"The {process} process is running.")
-            return True
+            pids = result.stdout.strip().split('\n')
+            for pid in pids:
+                interface = get_interface_by_pid(pid)
+                if interface:
+                    ip_result = subprocess.run(['ip', 'addr', 'show', interface], stdout=subprocess.PIPE, universal_newlines=True)
+                    if not re.search(r'inet 169\.\d+\.\d+\.\d+', ip_result.stdout):  # check if the interface has an IP starting with 169
+                        print(f"12、The {process} process is running.")
+                        return True
     print("12、The dhcpd or dhclient process is not running.")
     return False
 

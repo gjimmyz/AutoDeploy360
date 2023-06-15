@@ -35,3 +35,5 @@ software_list:
   - python3-pip
   - tuned
   - nethogs
+  - iperf3
+  - lsof

@@ -32,6 +32,15 @@
     - '*                soft    nproc            65535'
     - '*                hard    nproc            65535'
 
+- name: "Get current tuned profile"
+  shell: "tuned-adm active | awk -F': ' '{print $2}'"
+  register: current_tuned_profile
+  changed_when: False
+
+- name: "Activate network-throughput profile"
+  command: tuned-adm profile network-latency
+  when: current_tuned_profile.stdout != "network-latency"
+
 - name: Ensure vm.swappiness is set in sysctl.conf
   ansible.builtin.lineinfile:
     path: /etc/sysctl.conf

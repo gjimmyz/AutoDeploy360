@@ -1,18 +1,45 @@
 ---
 - hosts: all
+  vars:
+    scripts_path: /root/scripts/
+    current_date: "{{ lookup('pipe', 'date +%Y/%m/%d') }}"
   tasks:
+    - name: Create date directory
+      local_action:
+        module: file
+        path: "{{ scripts_path }}/machine_information_{{ current_date }}"
+        state: directory
+
     - name: Collect only facts returned by facter
       setup:
         gather_subset: '!all,!any'
 
+    - name: Include product names
+      include_vars:
+        file: product_names.yaml
+        name: product_names
+
+    - name: Get product name
+      become: yes
+      shell: dmidecode | grep "Product Name" | head -n 1
+      register: product_name_raw
+
+    - name: Extract product name
+      set_fact:
+        product_name: "{{ product_name_raw.stdout.split(':')[1].strip() }}"
+
+    - name: Set product name suffix based on product name
+      set_fact:
+        product_suffix: "{{ product_names.product_names[product_name] | default('no match found') }}"
+
     - name: Copy system_info_var.yaml to remote
       copy:
-        src: /root/scripts/based_on_role_yaml/system_info/vars/system_info_var.yaml
+        src: "{{ scripts_path }}/based_on_role_yaml/system_info/vars/system_info_var.yaml"
         dest: /tmp/system_info_var.yaml
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
     
     - name: Run check_all.py script on CentOS 7
-      script: /root/scripts/based_on_role_yaml/check_all.py
+      script: "{{ scripts_path }}/based_on_role_yaml/check_all.py"
       register: script_output
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
 
@@ -20,7 +47,7 @@
       local_action:
         module: copy
         content: "{{ script_output.stdout }}"
-        dest: "/tmp/file_centos7_{{ inventory_hostname }}"
+        dest: "{{ scripts_path }}/machine_information_{{ current_date }}/centos7_{{ inventory_hostname }}_{{ product_suffix }}"
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
 
     - name: Remove system_info_var.yaml from remote
@@ -38,5 +65,5 @@
       local_action:
         module: copy
         content: "{{ script_output.stdout }}"
-        dest: "/tmp/file_ubuntu20_{{ inventory_hostname }}"
+        dest: "{{ scripts_path }}/machine_information_{{ current_date }}/ubuntu20_{{ inventory_hostname }}_{{ product_suffix }}"
       when: ansible_facts['os_family'] == "Debian" and ansible_facts['lsb']['release'] == "20.04"
