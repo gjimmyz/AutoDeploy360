@@ -2,4 +2,4 @@ system_users:
   - user
   - admin_admin
 users: "{{ system_users }}"
-files_directory: "/root/scripts/based_on_role_yaml/get_real_can_loginhost_for_create_hosts_yaml/files/"
+files_directory: "/root/scripts/AutoDeploy360/based_on_role_yaml/get_real_can_loginhost_for_create_hosts_yaml/files/"

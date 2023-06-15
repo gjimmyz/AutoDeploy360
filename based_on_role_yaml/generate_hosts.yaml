@@ -2,7 +2,7 @@
   gather_facts: yes
   tasks:
     - name: Execute tasks in find_reachable_ip.yaml
-      include_tasks: "/root/scripts/based_on_role_yaml/check_ssh_conn_find_reachable_ip/tasks/find_reachable_ip.yaml"
+      include_tasks: "/root/scripts/AutoDeploy360/based_on_role_yaml/check_ssh_conn_find_reachable_ip/tasks/find_reachable_ip.yaml"
 
     - name: Execute tasks create_hosts_yaml
-      include_tasks: "/root/scripts/based_on_role_yaml/get_real_can_loginhost_for_create_hosts_yaml/tasks/create_hosts_yaml"
+      include_tasks: "/root/scripts/AutoDeploy360/based_on_role_yaml/get_real_can_loginhost_for_create_hosts_yaml/tasks/create_hosts_yaml"
