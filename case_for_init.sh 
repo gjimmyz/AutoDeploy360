@@ -26,16 +26,16 @@ then
                     read -p "请选择二级菜单选项: " submenu_choice
                     case $submenu_choice in
                         1|a|A)
-                            cd /root/scripts/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
-                            cd /root/scripts/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['system_info','reboot_for_ubuntu20','reboot_for_centos7']"
+                            cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
+                            cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['system_info','reboot_for_ubuntu20','reboot_for_centos7']"
                             ;;
                         2|b|B)
-                            cd /root/scripts/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
-                            cd /root/scripts/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['system_info','install_samba_for_ubuntu20','reboot_for_ubuntu20']"
+                            cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
+                            cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['system_info','install_samba_for_ubuntu20','reboot_for_ubuntu20']"
                             ;;
                         3|c|C)
-                            cd /root/scripts/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
-                            cd /root/scripts/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml get_facts.yaml
+                            cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
+                            cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml get_facts.yaml
                             ;;
                         4|d|D)
                             break
@@ -73,8 +73,8 @@ then
                                 read -p "请选择子菜单选项: " three_menu_choice
                                 case $three_menu_choice in
                                     1|a|A)
-                                        cd /root/scripts/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
-                                        cd /root/scripts/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['install_samba_for_centos7']"
+                                        cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
+                                        cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['install_samba_for_centos7']"
                                         ;;
                                     2|b|B)
                                         echo "第2个软件"
@@ -146,7 +146,7 @@ then
                 bash
                 ;;
             5|e|E)
-                ssh root@10.21.254.75
+                ssh root@10.xxx.xxx.75
                 ;;
             99|q|Q)
                 exit 0
