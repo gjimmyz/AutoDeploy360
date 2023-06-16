@@ -145,10 +145,23 @@ def check_ubuntu20_repo():
 
 # 检查软件安装
 def check_software():
-    with open('/tmp/system_info_var.yaml', 'r') as file:
+    if os.path.exists('/tmp/system_info_var.yaml'):
+        file_path = '/tmp/system_info_var.yaml'
+    elif os.path.exists('/tmp/var_for_US2004.yaml'):
+        file_path = '/tmp/var_for_US2004.yaml'
+    else:
+        print("Neither system_info_var.yaml nor var_for_US2004.yaml exists in /tmp directory.")
+        return
+    with open(file_path, 'r') as file:
         system_info = yaml.safe_load(file)
     software_list = system_info['software_list']
-    installed_packages = subprocess.run(['rpm', '-qa'], stdout=subprocess.PIPE).stdout.decode().strip().split('\n')
+    if os.path.exists('/etc/redhat-release'):
+        installed_packages = subprocess.run(['rpm', '-qa'], stdout=subprocess.PIPE).stdout.decode().strip().split('\n')
+    elif os.path.exists('/etc/debian_version'):
+        installed_packages = subprocess.run(['dpkg-query', '-f', '${binary:Package}\n', '-W'], stdout=subprocess.PIPE).stdout.decode().strip().split('\n')
+    else:
+        print("Unsupported system type.")
+        return
     installed_softwares = []
     not_installed_softwares = []
     for software in software_list:
@@ -156,6 +169,7 @@ def check_software():
             installed_softwares.append(software)
         else:
             not_installed_softwares.append(software)
+    print("13、The following are the software packages installed on the system:")
     if installed_softwares:
         num_lines = len(installed_softwares) // 6 + (len(installed_softwares) % 6 > 0)
         for i in range(num_lines):
@@ -231,7 +245,7 @@ def check_dhcpd_process():
                     if not re.search(r'inet 169\.\d+\.\d+\.\d+', ip_result.stdout):  # check if the interface has an IP starting with 169
                         print(f"12、The {process} process is running.")
                         return True
-    print("12、The dhcpd or dhclient process is not running.")
+    print("12、The dhcpd or dhclient process is not running:")
     return False
 
 # 检查并打印网络配置
@@ -282,6 +296,7 @@ def check_pip_packages():
             package_name_version = match.group(1) + " (" + match.group(2) + ")"
             installed_packages.append(package_name_version)
     num_lines = len(installed_packages) // 5 + (len(installed_packages) % 5 > 0)
+    print("14、The following are the pip packages installed on the system:")
     for i in range(num_lines):
         print('14、' + '、'.join(installed_packages[i*5:(i+1)*5]))
 
@@ -334,6 +349,7 @@ if platform.system() == 'Linux':
         if not check_ntp_external():
             check_ntp_internal()
         check_ubuntu20_network()
+        check_software()
         check_pip_packages()
         
     else:

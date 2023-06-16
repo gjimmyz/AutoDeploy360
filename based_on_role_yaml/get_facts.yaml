@@ -56,6 +56,12 @@
         state: absent
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
 
+    - name: Copy var_for_US2004.yaml to remote
+      copy:
+        src: "{{ scripts_path }}/based_on_role_yaml/system_info/vars/var_for_US2004.yaml"
+        dest: /tmp/var_for_US2004.yaml
+      when: ansible_facts['os_family'] == "Debian" and ansible_facts['lsb']['release'] == "20.04"
+
     - name: Run check_all.py script on Ubuntu 20
       script: "{{ scripts_path }}/based_on_role_yaml/check_all.py"
       register: script_output
@@ -66,4 +72,10 @@
         module: copy
         content: "{{ script_output.stdout }}"
         dest: "{{ scripts_path }}/machine_information_{{ current_date }}/ubuntu20_{{ inventory_hostname }}_{{ product_suffix }}"
+      when: ansible_facts['os_family'] == "Debian" and ansible_facts['lsb']['release'] == "20.04"
+
+    - name: Remove var_for_US2004.yaml from remote
+      file:
+        path: /tmp/var_for_US2004.yaml
+        state: absent
       when: ansible_facts['os_family'] == "Debian" and ansible_facts['lsb']['release'] == "20.04"

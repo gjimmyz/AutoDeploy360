@@ -7,6 +7,10 @@
           when: "'system_info' in roles"
 
         - include_role:
+            name: install_nic_driver_for_ubuntu20_nuc
+          when: "'install_nic_driver_for_ubuntu20_nuc' in roles"
+
+        - include_role:
             name: install_samba_for_ubuntu20
           when: "'install_samba_for_ubuntu20' in roles"
 

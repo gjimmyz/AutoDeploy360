@@ -1,0 +1,57 @@
+---
+# tasks file for install_nic_driver_for_ubuntu20_nuc
+- name: Check if the marker file exists
+  stat: 
+    path: /var/lib/nic_driver_file
+  register: marker
+
+- block:
+  - name: Get network interfaces
+    command: ls /sys/class/net
+    register: interfaces
+
+  - name: Check driver of each interface
+    command: "ethtool -i {{ item }}"
+    register: driver_info
+    loop: "{{ interfaces.stdout_lines }}"
+    ignore_errors: true
+
+  - name: Identify interfaces with r8169 driver
+    set_fact:
+      r8169_interfaces: "{{ r8169_interfaces | default([]) + [item.item] }}"
+    loop: "{{ driver_info.results }}"
+    when: "'driver: r8169' in item.stdout"
+
+  - name: Print interfaces with r8169 driver
+    debug:
+      var: r8169_interfaces
+
+  - name: Check the version of the r8169 driver
+    command: "modinfo r8169"
+    register: driver_version
+    changed_when: false
+
+  - name: Update driver for r8169 interfaces
+    block:
+      - name: Copy driver file to remote host
+        copy:
+          src: r8168-8.051.02.tar.bz2
+          dest: /tmp/r8168-8.051.02.tar.bz2
+
+      - name: Extract driver file
+        unarchive:
+          src: /tmp/r8168-8.051.02.tar.bz2
+          dest: /tmp/
+          remote_src: yes
+
+      - name: Install driver
+        command: ./autorun.sh
+        args:
+          chdir: /tmp/r8168-8.051.02/
+    when: r8169_interfaces | length > 0 and '8.051.02' not in driver_version.stdout
+
+  - name: Create a marker file
+    file:
+      path: /var/lib/nic_driver_file
+      state: touch
+  when: not marker.stat.exists

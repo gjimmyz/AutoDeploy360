@@ -1,0 +1,5 @@
+---
+- hosts: localhost
+  remote_user: root
+  roles:
+    - install_nic_driver_for_ubuntu20_nuc
