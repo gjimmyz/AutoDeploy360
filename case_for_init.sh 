@@ -31,7 +31,7 @@ then
                             ;;
                         2|b|B)
                             cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
-                            cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['system_info','install_samba_for_ubuntu20','reboot_for_ubuntu20']"
+                            cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['system_info','install_nic_driver_for_ubuntu20_nuc','install_samba_for_ubuntu20','reboot_for_ubuntu20']"
                             ;;
                         3|c|C)
                             cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
