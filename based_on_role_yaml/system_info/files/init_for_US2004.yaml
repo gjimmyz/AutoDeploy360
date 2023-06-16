@@ -1,6 +1,10 @@
 - name: Include vars
   include_vars: ../vars/var_for_US2004.yaml
 
+- name: Set Shanghai timezone
+  timezone:
+    name: Asia/Shanghai
+
 - name: Configure sudoers file for user
   ansible.builtin.lineinfile:
     dest: /etc/sudoers
@@ -9,13 +13,15 @@
     state: present
     validate: 'visudo -cf %s'
 
-- name: Set vm.swappiness to 0 using sysctl
-  ansible.builtin.sysctl:
-    name: vm.swappiness
-    value: '0'
-    state: present
+- name: Change various sysctl-settings
+  sysctl:
+    name: '{{ item.key }}'
+    value: '{{ item.value }}'
     sysctl_set: yes
+    state: present
     reload: yes
+    ignoreerrors: yes
+  with_dict: '{{ sysctl_config }}'
 
 - name: Set limits
   lineinfile:
@@ -31,21 +37,6 @@
     - '*                hard    core             2048000'
     - '*                soft    nproc            65535'
     - '*                hard    nproc            65535'
-
-- name: "Get current tuned profile"
-  shell: "tuned-adm active | awk -F': ' '{print $2}'"
-  register: current_tuned_profile
-  changed_when: False
-
-- name: "Activate network-throughput profile"
-  command: tuned-adm profile network-latency
-  when: current_tuned_profile.stdout != "network-latency"
-
-- name: Ensure vm.swappiness is set in sysctl.conf
-  ansible.builtin.lineinfile:
-    path: /etc/sysctl.conf
-    regexp: '^vm.swappiness[[:space:]]?='
-    line: 'vm.swappiness = 0'
 
 - name: Check if /etc/rc.local file exists
   ansible.builtin.stat:
@@ -100,40 +91,19 @@
     state: touch
   when: not lock_file_stat.stat.exists or (ansible_date_time.epoch | int - lock_file_stat.stat.mtime | int > 3600)
 
-- name: Set Shanghai timezone
-  timezone:
-    name: Asia/Shanghai
-
 - name: Install base package
   apt:
-    name:
-      - iftop
-      - iotop
-      - atop
-      - vim
-      - net-tools
-      - ntp
-      - ntpdate
-      - nfs-kernel-server
-      - nfs-common
-      - libssl-dev
-      - libffi-dev
-      - libaio-dev
-      - liblzma-dev
-      - libbz2-dev
-      - libncurses-dev
-      - libgdbm-dev
-      - libsqlite3-dev
-      - tk-dev
-      - libreadline-dev
-      - libarchive-dev
-      - libjansson-dev
-      - libacl1-dev
-      - exfat-utils
-      - python3-pip
-      - tuned
-      - iperf3
+    name: "{{ software_list }}"
     state: present
+
+- name: "Get current tuned profile"
+  shell: "tuned-adm active | awk -F': ' '{print $2}'"
+  register: current_tuned_profile
+  changed_when: False
+
+- name: "Activate network-throughput profile"
+  command: tuned-adm profile network-latency
+  when: current_tuned_profile.stdout != "network-latency"
 
 - name: Set up cron job for time synchronization
   cron:
