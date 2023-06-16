@@ -37,3 +37,5 @@ software_list:
   - nethogs
   - iperf3
   - lsof
+sysctl_config:
+  vm.swappiness: 0
