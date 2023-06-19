@@ -1,13 +1,13 @@
 ---
 - hosts: all
   vars:
-    scripts_path: /root/scripts/AutoDeploy360/
+    scripts_path: /root/scripts/
     current_date: "{{ lookup('pipe', 'date +%Y/%m/%d') }}"
   tasks:
     - name: Create date directory
       local_action:
         module: file
-        path: "{{ scripts_path }}/machine_information_{{ current_date }}"
+        path: "{{ scripts_path }}/AutoDeploy360/machine_information_{{ current_date }}"
         state: directory
 
     - name: Collect only facts returned by facter
@@ -34,12 +34,12 @@
 
     - name: Copy system_info_var.yaml to remote
       copy:
-        src: "{{ scripts_path }}/based_on_role_yaml/system_info/vars/system_info_var.yaml"
+        src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/system_info/vars/system_info_var.yaml"
         dest: /tmp/system_info_var.yaml
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
     
     - name: Run check_all.py script on CentOS 7
-      script: "{{ scripts_path }}/based_on_role_yaml/check_all.py"
+      script: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/check_all.py"
       register: script_output
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
 
@@ -47,7 +47,7 @@
       local_action:
         module: copy
         content: "{{ script_output.stdout }}"
-        dest: "{{ scripts_path }}/machine_information_{{ current_date }}/centos7_{{ inventory_hostname }}_{{ product_suffix }}"
+        dest: "{{ scripts_path }}/AutoDeploy360/machine_information_{{ current_date }}/centos7_{{ inventory_hostname }}_{{ product_suffix }}"
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
 
     - name: Remove system_info_var.yaml from remote
@@ -58,12 +58,12 @@
 
     - name: Copy var_for_US2004.yaml to remote
       copy:
-        src: "{{ scripts_path }}/based_on_role_yaml/system_info/vars/var_for_US2004.yaml"
+        src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/system_info/vars/var_for_US2004.yaml"
         dest: /tmp/var_for_US2004.yaml
       when: ansible_facts['os_family'] == "Debian" and ansible_facts['lsb']['release'] == "20.04"
 
     - name: Run check_all.py script on Ubuntu 20
-      script: "{{ scripts_path }}/based_on_role_yaml/check_all.py"
+      script: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/check_all.py"
       register: script_output
       when: ansible_facts['os_family'] == "Debian" and ansible_facts['lsb']['release'] == "20.04"
 
@@ -71,7 +71,7 @@
       local_action:
         module: copy
         content: "{{ script_output.stdout }}"
-        dest: "{{ scripts_path }}/machine_information_{{ current_date }}/ubuntu20_{{ inventory_hostname }}_{{ product_suffix }}"
+        dest: "{{ scripts_path }}/AutoDeploy360/machine_information_{{ current_date }}/ubuntu20_{{ inventory_hostname }}_{{ product_suffix }}"
       when: ansible_facts['os_family'] == "Debian" and ansible_facts['lsb']['release'] == "20.04"
 
     - name: Remove var_for_US2004.yaml from remote
