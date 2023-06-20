@@ -7,6 +7,10 @@
           when: "'system_info' in roles"
 
         - include_role:
+            name: time_clock_cron_check
+          when: "'time_clock_cron_check' in roles"
+
+        - include_role:
             name: install_nic_driver_for_ubuntu20_nuc
           when: "'install_nic_driver_for_ubuntu20_nuc' in roles"
 
@@ -26,6 +30,10 @@
         - include_role:
             name: system_info
           when: "'system_info' in roles"
+
+        - include_role:
+            name: time_clock_cron_check
+          when: "'time_clock_cron_check' in roles"
 
         - include_role:
             name: install_samba_for_centos7

@@ -300,6 +300,40 @@ def check_pip_packages():
     for i in range(num_lines):
         print('14、' + '、'.join(installed_packages[i*5:(i+1)*5]))
 
+def check_nic_info():
+    cmd = 'sudo lshw -c network'
+    output = subprocess.check_output(cmd, shell=True).decode()
+    network_list = output.split('*-network')[1:]
+    network_dict = defaultdict(int)
+    network_info = {}
+    for network in network_list:
+        if 'Ethernet interface' in network:
+            product_search = re.search('product: (.*)', network)
+            vendor_search = re.search('vendor: (.*)', network)
+            driver_search = re.search('driver=(\S+)', network)
+            driverversion_search = re.search('driverversion=(\S+)', network)
+            product = product_search.group(1) if product_search else 'null'
+            vendor = vendor_search.group(1) if vendor_search else 'null'
+            driver = driver_search.group(1) if driver_search else 'null'
+            driverversion = driverversion_search.group(1) if driverversion_search else 'null'
+            network_dict[product] += 1
+            network_info[product] = {
+                'vendor': vendor,
+                'driver': driver,
+                'driver_ver': driverversion
+            }
+    print('15、The following are nic info')
+    for product, count in network_dict.items():
+        info = network_info[product]
+        #if product == 'null':
+        if product == 'null' and info['vendor'] == 'null':
+            #print('model:', product, '、vendor:', info['vendor'], '\n', end='')
+            print('model:', product, '、vendor:', info['vendor'], '、driver:', info['driver'], '、driver_ver:', info['driver_ver'], '、nic_num:', count)
+        else:
+            #print('model:', product, '\nvendor:', info['vendor'], '\n', end='')
+            print('model:', product, '\nvendor:', info['vendor'], '\ndriver:', info['driver'], '、driver_ver:', info['driver_ver'], '、nic_num:', count)
+        #print('driver:', info['driver'], '、driver_ver:', info['driver_ver'], '、nic_num:', count)
+
 # 使用
 def check_ubuntu20_network():
     if not check_dhcpd_process():
@@ -335,6 +369,7 @@ if platform.system() == 'Linux':
         check_static_ip()
         check_software()
         check_pip_packages()
+        check_nic_info()
         
     elif distro_name == 'ubuntu' and major_version == '20':
         check_firewalld()
@@ -351,6 +386,7 @@ if platform.system() == 'Linux':
         check_ubuntu20_network()
         check_software()
         check_pip_packages()
+        check_nic_info()
         
     else:
         print('Unsupported Linux distribution')

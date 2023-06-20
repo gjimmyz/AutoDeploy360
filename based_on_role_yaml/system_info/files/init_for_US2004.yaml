@@ -108,7 +108,7 @@
 - name: Set up cron job for time synchronization
   cron:
     name: "Sync time every hour"
-    minute: "0"
+    minute: "30"
     hour: "*"
     user: root
     job: "{{ ntp_cron_job }}"

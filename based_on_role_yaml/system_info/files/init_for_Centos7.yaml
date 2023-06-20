@@ -157,7 +157,7 @@
     - name: "Centos7 Set up cron job for time synchronization for internet hosts"
       cron:
         name: "Sync time every hour"
-        minute: "0"
+        minute: "30"
         hour: "*"
         user: root
         job: "{{ ntp_cron_job }}"
