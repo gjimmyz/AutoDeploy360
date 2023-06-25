@@ -1,0 +1,5 @@
+ssh_host: 10.xxx.xxx.11
+ssh_default_port: 22
+ssh_port: 22222
+ssh_user: user
+ssh_passwd: user
