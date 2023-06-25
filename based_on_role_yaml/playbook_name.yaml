@@ -55,3 +55,11 @@
         - include_role:
             name: time_clock_cron_check
           when: "'time_clock_cron_check' in roles"
+
+- hosts: localhost
+  gather_facts: yes
+  tasks:
+    - block:
+        - include_role:
+            name: send_to_mail
+          when: "'send_to_mail' in roles"

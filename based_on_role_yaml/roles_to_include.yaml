@@ -8,3 +8,4 @@ roles:
   - install_nic_driver_for_ubuntu20_nuc
   - time_clock_cron_check
   - sshpass_ssh_conn
+  - send_to_mail

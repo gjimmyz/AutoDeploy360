@@ -1,0 +1,22 @@
+---
+# tasks file for send_to_mail
+
+- name: Include secret vars
+  include_vars:
+    file: vars/mail_var.yaml
+    name: secrets
+
+- name: Find today's output.txt file
+  local_action: 
+    module: shell 
+    args:
+      cmd: "find {{ secrets.scripts_dir }}/AutoDeploy360/time_clock_cron_check_log/$(date '+%Y/%m/%d') -name output.txt"
+  register: output_file
+
+- name: Execute mail sending script locally
+  local_action: 
+    module: shell
+    args: 
+      cmd: "python3 {{ secrets.scripts_dir }}/AutoDeploy360/based_on_role_yaml/send_to_mail/files/mailsend.py {{ secrets.mail_host }} {{ secrets.from_address }} '{{ secrets.to_addresses | join(',') }}' '\"{{ subject }}\"' {{ output_file.stdout }}"
+  vars:
+    subject: "Test Test Test"
