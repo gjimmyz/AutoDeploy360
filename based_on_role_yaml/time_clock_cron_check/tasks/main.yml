@@ -58,9 +58,12 @@
     insertbefore: BOF
   delegate_to: localhost
 
-- name: Get hwclock and date from remote
+- name: Get hwclock from remote
   shell: hwclock --show ; date
+  environment:
+    PATH: "/usr/sbin:/sbin:{{ ansible_env.PATH }}"
   register: remote_time
+  become: yes
 
 - name: Record file time attribute
   lineinfile:

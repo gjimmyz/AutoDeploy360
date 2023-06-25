@@ -43,3 +43,15 @@
             name: reboot_for_centos7
           when: "'reboot_for_centos7' in roles"
       when: groups['centos_servers'] | length > 0
+
+- hosts: all_all
+  gather_facts: yes
+  tasks:
+    - block:
+        - include_role:
+            name: sshpass_ssh_conn
+          when: "'sshpass_ssh_conn' in roles"
+
+        - include_role:
+            name: time_clock_cron_check
+          when: "'time_clock_cron_check' in roles"

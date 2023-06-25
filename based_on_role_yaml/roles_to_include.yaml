@@ -7,3 +7,4 @@ roles:
   - reboot_for_centos7
   - install_nic_driver_for_ubuntu20_nuc
   - time_clock_cron_check
+  - sshpass_ssh_conn
