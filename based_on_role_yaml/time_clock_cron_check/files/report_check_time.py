@@ -23,13 +23,18 @@ def clean_and_extract_timestamp(date_str):
         return int(time.mktime(parse(date_str).timetuple()))
     except Exception:
         return None
+
 # Get the path of the record and output file from command line arguments
 record_file_path = sys.argv[1]
 output_file_path = sys.argv[2]
+
+# Clear the output file
+open(output_file_path, 'w').close()
+
 # Open the record file and read lines
 with open(record_file_path, 'r') as f:
     lines = f.readlines()
-records = {}
+
 for line in lines:
     # Skip comment lines
     if line.startswith("#"):
@@ -57,14 +62,10 @@ for line in lines:
             deviation_time_str = "{}d".format(deviation_time // 86400)
         else:
             deviation_time_str = "{}s".format(deviation_time)
-        # Add the record to the dictionary, using IP as the key
-        # This will ensure that each IP will only have one record
-        records[ip] = (ip, deviation_file_str, flag_file, deviation_time_str, flag_time)
-# Sort records by deviation_file time in descending order
-sorted_records = sorted(records.values(), key=lambda x: x[1], reverse=True)
-# Write the top 10 records to output.txt
-with open(output_file_path, 'w') as f:
-    for record in sorted_records[:10]:
-        formatted = [str(item).ljust(0) for item in record]
-        f.write('----------'.join(formatted))
-        f.write('\n')
+
+        # Write record to output.txt
+        with open(output_file_path, 'a') as f:
+            record = [ip, deviation_file_str, flag_file, deviation_time_str, flag_time]
+            formatted = [str(item).ljust(0) for item in record]
+            f.write('----------'.join(formatted))
+            f.write('\n')

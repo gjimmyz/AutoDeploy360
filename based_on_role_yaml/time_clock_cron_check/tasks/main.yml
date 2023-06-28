@@ -83,12 +83,6 @@
   register: output_file
   delegate_to: localhost
 
-- name: Backup output file if exists
-  command:
-    cmd: "cp -f {{ output_file_path }} {{ output_file_path }}_{{ lookup('pipe','date +%Y%m%d%H%M%S') }}"
-  when: output_file.stat.exists
-  delegate_to: localhost
-
 - name: Run Python script
   ansible.builtin.command:
     cmd: python3 report_check_time.py "{{ record_file_path }}" "{{ output_file_path }}"
