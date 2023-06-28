@@ -28,8 +28,8 @@ filter_parameter = os.getenv('FILTER_PARAMETER', '#')
 
 # Script and file paths
 scripts_path = "/root/scripts/"
-ip_file_path = scripts_path + "AutoDeploy360/based_on_role_yaml/ip_all.txt"
-host_template_path = scripts_path + "AutoDeploy360/based_on_role_yaml/host_all_template.yaml"
+ip_file_path = scripts_path + "AutoDeploy360/based_on_role_yaml/main_exe/time_clock_cron_check_main/ip_all.txt"
+host_template_path = scripts_path + "AutoDeploy360/based_on_role_yaml/main_exe/time_clock_cron_check_main/host_all_template.yaml"
 new_dir = scripts_path + "AutoDeploy360/time_clock_cron_check_host_yaml/"
 os.makedirs(new_dir, exist_ok=True)
 host_base_path = new_dir + "host_all_"

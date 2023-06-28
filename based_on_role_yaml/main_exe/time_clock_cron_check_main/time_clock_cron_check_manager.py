@@ -12,7 +12,7 @@ import subprocess
 
 # Script and task paths
 scripts_path = "/root/scripts/"
-python_exe_path = scripts_path + "AutoDeploy360/based_on_role_yaml/python_exe/"
+python_exe_path = scripts_path + "AutoDeploy360/based_on_role_yaml/main_exe/time_clock_cron_check_main/"
 task_path = python_exe_path + "time_clock_cron_check.py"
 
 def start_task():
@@ -20,7 +20,7 @@ def start_task():
     if subprocess.run(cmd_check, shell=True).returncode == 0:
         print("The task is already scheduled. Please stop the task before starting it again.")
     else:
-        cmd = f'(crontab -l ; echo "00 11 * * * cd {python_exe_path} && python3 {task_path}") | crontab -'
+        cmd = f'(crontab -l ; echo "29 13 * * * cd {python_exe_path} && python3 {task_path}") | crontab -'
         subprocess.run(cmd, shell=True, check=True)
         print("Task has been scheduled successfully.")
         show_task()
