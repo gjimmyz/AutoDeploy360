@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/bin/bashscripts_path="/root/scripts"
+
 if [[ `id -u` -eq 0 ]]
 then
     while true
@@ -26,16 +27,16 @@ then
                     read -p "请选择二级菜单选项: " submenu_choice
                     case $submenu_choice in
                         1|a|A)
-                            cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
-                            cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['system_info','reboot_for_ubuntu20','reboot_for_centos7']"
+                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
+                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['system_info','reboot_for_ubuntu20','reboot_for_centos7']"
                             ;;
                         2|b|B)
-                            cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
-                            cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['system_info','install_nic_driver_for_ubuntu20_nuc','install_samba_for_ubuntu20','reboot_for_ubuntu20']"
+                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
+                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['system_info','install_nic_driver_for_ubuntu20_nuc','install_samba_for_ubuntu20','reboot_for_ubuntu20']"
                             ;;
                         3|c|C)
-                            cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
-                            cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml get_facts.yaml
+                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
+                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml get_facts.yaml
                             ;;
                         4|d|D)
                             break
@@ -73,8 +74,8 @@ then
                                 read -p "请选择子菜单选项: " three_menu_choice
                                 case $three_menu_choice in
                                     1|a|A)
-                                        cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
-                                        cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['install_samba_for_centos7']"
+                                        cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
+                                        cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['install_samba_for_centos7']"
                                         ;;
                                     2|b|B)
                                         echo "第2个软件"
@@ -113,8 +114,8 @@ then
                 while true
                 do
                     echo -e "
-                    \033[31m 1|a|A 计划任务1 \033[0m
-                    \033[32m 2|b|B 计划任务2 \033[0m
+                    \033[31m 1|a|A 通过nmap扫描获取主机后，任务是���查时间 \033[0m
+                    \033[32m 2|b|B 自定义主机配置，任务是检查时间 \033[0m
                     \033[33m 3|c|C 计划任务3 \033[0m
                     \033[34m 4|d|D 返回主菜单 \033[0m
                     \033[35m 99|q|Q 退出 \033[0m
@@ -122,11 +123,11 @@ then
                     read -p "请选择二级菜单选项: " submenu_choice
                     case $submenu_choice in
                         1|a|A)
-                            cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
-                            cd /root/scripts/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['time_clock_cron_check']"
+                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
+                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['time_clock_cron_check']"
                             ;;
                         2|b|B)
-                            echo "待更新2"
+                            python3 ${scripts_path}/AutoDeploy360/based_on_role_yaml/python_exe/time_clock_cron_check_manager.py
                             ;;
                         3|c|C)
                             echo "待更新3"
