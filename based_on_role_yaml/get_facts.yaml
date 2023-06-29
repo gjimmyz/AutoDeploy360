@@ -3,11 +3,12 @@
   vars:
     scripts_path: /root/scripts/
     current_date: "{{ lookup('pipe', 'date +%Y/%m/%d') }}"
+
   tasks:
     - name: Create date directory
       local_action:
         module: file
-        path: "{{ scripts_path }}/AutoDeploy360/machine_information_{{ current_date }}"
+        path: "{{ scripts_path }}/AutoDeploy360/machine_information/{{ current_date }}"
         state: directory
 
     - name: Collect only facts returned by facter
@@ -38,44 +39,62 @@
         dest: /tmp/system_info_var.yaml
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
     
-    - name: Run check_all.py script on CentOS 7
-      script: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/check_all.py"
-      register: script_output
+    - name: Copy check_all.py script to remote
+      copy:
+        src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/main_exe/check_all.py"
+        dest: /tmp/check_all.py
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
 
-    - name: Write script output to local file for CentOS 7
-      local_action:
-        module: copy
-        content: "{{ script_output.stdout }}"
-        dest: "{{ scripts_path }}/AutoDeploy360/machine_information_{{ current_date }}/centos7_{{ inventory_hostname }}_{{ product_suffix }}"
+    - name: Run check_all.py script on Ubuntu 20
+      shell: "python3 /tmp/check_all.py > /tmp/check_all_output.txt"
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
 
-    - name: Remove system_info_var.yaml from remote
+    - name: Fetch the output to local machine
+      fetch:
+        src: /tmp/check_all_output.txt
+        dest: "{{ scripts_path }}/AutoDeploy360/machine_information/{{ current_date }}/centos7_{{ inventory_hostname }}_{{ product_suffix }}"
+        flat: yes
+      when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
+
+    - name: Remove temporary files from remote
       file:
-        path: /tmp/system_info_var.yaml
+        path: "{{ item }}"
         state: absent
+      with_items:
+        - /tmp/check_all.py
+        - /tmp/check_all_output.txt
+        - /tmp/system_info_var.yaml
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
 
     - name: Copy var_for_US2004.yaml to remote
       copy:
         src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/system_info/vars/var_for_US2004.yaml"
         dest: /tmp/var_for_US2004.yaml
-      when: ansible_facts['os_family'] == "Debian" and ansible_facts['lsb']['release'] == "20.04"
+      when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04'
+
+    - name: Copy check_all.py script to remote
+      copy:
+        src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/main_exe/check_all.py"
+        dest: /tmp/check_all.py
+      when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04'
 
     - name: Run check_all.py script on Ubuntu 20
-      script: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/check_all.py"
-      register: script_output
-      when: ansible_facts['os_family'] == "Debian" and ansible_facts['lsb']['release'] == "20.04"
+      shell: "python3 /tmp/check_all.py > /tmp/check_all_output.txt"
+      when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04'
 
-    - name: Write script output to local file for Ubuntu 20
-      local_action:
-        module: copy
-        content: "{{ script_output.stdout }}"
-        dest: "{{ scripts_path }}/AutoDeploy360/machine_information_{{ current_date }}/ubuntu20_{{ inventory_hostname }}_{{ product_suffix }}"
-      when: ansible_facts['os_family'] == "Debian" and ansible_facts['lsb']['release'] == "20.04"
+    - name: Fetch the output to local machine
+      fetch:
+        src: /tmp/check_all_output.txt
+        dest: "{{ scripts_path }}/AutoDeploy360/machine_information/{{ current_date }}/ubuntu20_{{ inventory_hostname }}_{{ product_suffix }}"
+        flat: yes
+      when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04'
 
-    - name: Remove var_for_US2004.yaml from remote
+    - name: Remove temporary files from remote
       file:
-        path: /tmp/var_for_US2004.yaml
+        path: "{{ item }}"
         state: absent
-      when: ansible_facts['os_family'] == "Debian" and ansible_facts['lsb']['release'] == "20.04"
+      with_items:
+        - /tmp/check_all.py
+        - /tmp/check_all_output.txt
+        - /tmp/var_for_US2004.yaml
+      when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04'

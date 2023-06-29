@@ -223,7 +223,7 @@
 
 - name: "Centos7 Install xxx using pip3"
   ansible.builtin.pip:
-    name: pyyaml,distro
+    name: pyyaml,distro,iperf3
     executable: pip3
     state: present
 

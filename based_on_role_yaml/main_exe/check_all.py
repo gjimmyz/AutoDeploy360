@@ -325,14 +325,10 @@ def check_nic_info():
     print('15、The following are nic info')
     for product, count in network_dict.items():
         info = network_info[product]
-        #if product == 'null':
         if product == 'null' and info['vendor'] == 'null':
-            #print('model:', product, '、vendor:', info['vendor'], '\n', end='')
             print('model:', product, '、vendor:', info['vendor'], '、driver:', info['driver'], '、driver_ver:', info['driver_ver'], '、nic_num:', count)
         else:
-            #print('model:', product, '\nvendor:', info['vendor'], '\n', end='')
             print('model:', product, '\nvendor:', info['vendor'], '\ndriver:', info['driver'], '、driver_ver:', info['driver_ver'], '、nic_num:', count)
-        #print('driver:', info['driver'], '、driver_ver:', info['driver_ver'], '、nic_num:', count)
 
 # 使用
 def check_ubuntu20_network():
