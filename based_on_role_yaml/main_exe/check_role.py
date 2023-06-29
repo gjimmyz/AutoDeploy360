@@ -42,4 +42,10 @@ for root, dirs, files in os.walk(output_dir):
 file_paths_str = ','.join([f"'{path}'" for path in file_paths])
 
 # Send mail
-subprocess.run(['ansible-playbook', '-i', 'localhost', playbook_path, '--extra-vars', f"@{roles_file_path}", '--extra-vars', f"roles=['send_to_mail'] mail_subject='Your subject' file_to_send_list=[{file_paths_str}]"], check=True)
+#subprocess.run(['ansible-playbook', '-i', 'localhost', playbook_path, '--extra-vars', f"@{roles_file_path}", '--extra-vars', f"roles=['send_to_mail'] mail_subject='Your subject' file_to_send_list=[{file_paths_str}]"], check=True)
+
+# Send mail
+for file_path in file_paths:
+    # Extract the base file name without extension as the mail subject
+    mail_subject = os.path.splitext(os.path.basename(file_path))[0]
+    subprocess.run(['ansible-playbook', '-i', 'localhost', playbook_path, '--extra-vars', f"@{roles_file_path}", '--extra-vars', f"roles=['send_to_mail'] mail_subject='{mail_subject}' file_to_send_list=['{file_path}']"], check=True)
