@@ -17,7 +17,6 @@ import ipaddress
 import platform
 import distro
 from collections import defaultdict
-import iperf3
 
 # 检查SELinux状态
 def check_selinux():
