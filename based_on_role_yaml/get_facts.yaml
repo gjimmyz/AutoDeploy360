@@ -41,7 +41,13 @@
 
     - name: Extract system serial number
       set_fact:
-        system_serial: "{% if system_serial_raw.stdout.strip() == 'Not Specified' %}unknown{% else %}{{ system_serial_raw.stdout.strip() }}{% endif %}"
+        system_serial: "{% if system_serial_raw.stdout.strip() == 'Not Specified' or system_serial_raw.stdout.strip() == 'Default string' %}unknown{% else %}{{ system_serial_raw.stdout.strip() }}{% endif %}"
+
+    - name: Get machine id
+      become: yes
+      shell:  cat /etc/machine-id
+      register: machine_id
+      failed_when: false
 
     - name: Copy system_info_var.yaml to remote
       copy:
@@ -62,7 +68,7 @@
     - name: Fetch the output to local machine
       fetch:
         src: /tmp/check_all_output.txt
-        dest: "{{ scripts_path }}/AutoDeploy360/machine_information/{{ current_date }}/centos7_{{ system_serial }}_{{ product_suffix }}"
+        dest: "{{ scripts_path }}/AutoDeploy360/machine_information/{{ current_date }}/centos7_{{ system_serial }}_{{ product_suffix }}_{{ machine_id.stdout }}"
         flat: yes
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
 
@@ -95,7 +101,7 @@
     - name: Fetch the output to local machine
       fetch:
         src: /tmp/check_all_output.txt
-        dest: "{{ scripts_path }}/AutoDeploy360/machine_information/{{ current_date }}/ubuntu20_{{ system_serial }}_{{ product_suffix }}"
+        dest: "{{ scripts_path }}/AutoDeploy360/machine_information/{{ current_date }}/ubuntu20_{{ system_serial }}_{{ product_suffix }}_{{ machine_id.stdout }}"
         flat: yes
       when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04'
 

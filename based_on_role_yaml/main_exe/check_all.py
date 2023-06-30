@@ -17,6 +17,7 @@ import ipaddress
 import platform
 import distro
 from collections import defaultdict
+import time
 
 # 检查SELinux状态
 def check_selinux():
@@ -330,21 +331,29 @@ def check_nic_info():
         else:
             print('model:', product, '\nvendor:', info['vendor'], '\ndriver:', info['driver'], '、driver_ver:', info['driver_ver'], '、nic_num:', count)
 
-def run_iperf_test(server_hostname, port=5201):
-    command = ["iperf3", "-c", server_hostname, "-p", str(port)]
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if result.returncode != 0:
-        print(f"Error running iperf: {result.stderr.decode()}")
-        return None
-
-    output = result.stdout.decode()
-    # 此处解析输出并提取带宽信息
-    match = re.search(r"\d+ Mbits/sec", output)
-    if match:
-        return match.group(0)
-    else:
-        print("Failed to extract bandwidth information from iperf output")
-        return None
+def run_iperf_test(server_hostname, port=5201, duration=1, max_attempts=3, delay_between_attempts=5):
+    command = ["iperf3", "-c", server_hostname, "-p", str(port), "-t", str(duration)]
+    for attempt in range(1, max_attempts + 1):
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output = result.stdout.decode()
+        if "the server is busy running a test" in output:
+            # Error running iperf, retry after a delay
+            time.sleep(delay_between_attempts)
+            continue
+        elif result.returncode != 0:
+            # Non-retryable error, abort
+            print("Non-retryable error encountered. Aborting.")
+            return None
+        else:
+            # Test was successful, parse and return the bandwidth
+            match = re.search(r"\d+ Mbits/sec", output)
+            if match:
+                return match.group(0)
+            else:
+                print("Failed to extract bandwidth information from iperf output")
+                return None
+    print("Failed to get successful iperf run after max attempts. Aborting.")
+    return None
 
 def check_bandwidth(server_hostname):
     bandwidth = run_iperf_test(server_hostname)
