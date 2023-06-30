@@ -346,9 +346,9 @@ def run_iperf_test(server_hostname, port=5201, duration=1, max_attempts=3, delay
             return None
         else:
             # Test was successful, parse and return the bandwidth
-            match = re.search(r"\d+ Mbits/sec", output)
+            match = re.search(r"(\d+) Mbits/sec", output)
             if match:
-                return match.group(0)
+                return int(match.group(1))
             else:
                 print("Failed to extract bandwidth information from iperf output")
                 return None
@@ -358,7 +358,10 @@ def run_iperf_test(server_hostname, port=5201, duration=1, max_attempts=3, delay
 def check_bandwidth(server_hostname):
     bandwidth = run_iperf_test(server_hostname)
     if bandwidth:
-        print(f"16、Bandwidth {bandwidth}")
+        if bandwidth >= 700:
+            print("16、Bandwidth 700+ Mbits/sec Ok")
+        else:
+            print(f"16、Bandwidth {bandwidth} Mbits/sec Warn")
     else:
         print("Failed to get bandwidth information.")
 

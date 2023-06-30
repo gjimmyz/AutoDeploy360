@@ -11,6 +11,7 @@
 import os
 import subprocess
 from datetime import datetime
+import hashlib
 
 os.environ['PATH'] = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
 
@@ -41,11 +42,43 @@ for root, dirs, files in os.walk(output_dir):
 # Convert the list into a string that can be passed to ansible-playbook
 file_paths_str = ','.join([f"'{path}'" for path in file_paths])
 
-# Send mail
-#subprocess.run(['ansible-playbook', '-i', 'localhost', playbook_path, '--extra-vars', f"@{roles_file_path}", '--extra-vars', f"roles=['send_to_mail'] mail_subject='Your subject' file_to_send_list=[{file_paths_str}]"], check=True)
+# Function to compute MD5
+def compute_md5(file_path):
+    hash_md5 = hashlib.md5()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
 
 # Send mail
 for file_path in file_paths:
+    # Skip files that have already been sent
+    if file_path.endswith(".sent"):
+        continue
+
+    # Compute the MD5 of the current file
+    current_md5 = compute_md5(file_path)
+
+    # Determine the path of the flag file
+    flag_file_path = file_path + ".sent"
+
+    # Check if the flag file exists and has the same MD5
+    if os.path.exists(flag_file_path):
+        with open(flag_file_path, "r") as f:
+            previous_md5 = f.read().strip()
+        if previous_md5 == current_md5:
+            continue  # Skip this file as it has been sent before
+
     # Extract the base file name without extension as the mail subject
     mail_subject = os.path.splitext(os.path.basename(file_path))[0]
     subprocess.run(['ansible-playbook', '-i', 'localhost', playbook_path, '--extra-vars', f"@{roles_file_path}", '--extra-vars', f"roles=['send_to_mail'] mail_subject='{mail_subject}' file_to_send_list=['{file_path}']"], check=True)
+
+    # Update (or create) the flag file with the new MD5
+    with open(flag_file_path, "w") as f:
+        f.write(current_md5)
+
+# Send mail
+#for file_path in file_paths:
+#    # Extract the base file name without extension as the mail subject
+#    mail_subject = os.path.splitext(os.path.basename(file_path))[0]
+#    subprocess.run(['ansible-playbook', '-i', 'localhost', playbook_path, '--extra-vars', f"@{roles_file_path}", '--extra-vars', f"roles=['send_to_mail'] mail_subject='{mail_subject}' file_to_send_list=['{file_path}']"], check=True)
