@@ -17,6 +17,7 @@ import ipaddress
 import platform
 import distro
 from collections import defaultdict
+import iperf3
 
 # 检查SELinux状态
 def check_selinux():
@@ -330,6 +331,29 @@ def check_nic_info():
         else:
             print('model:', product, '\nvendor:', info['vendor'], '\ndriver:', info['driver'], '、driver_ver:', info['driver_ver'], '、nic_num:', count)
 
+def run_iperf_test(server_hostname, port=5201):
+    command = ["iperf3", "-c", server_hostname, "-p", str(port)]
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.returncode != 0:
+        print(f"Error running iperf: {result.stderr.decode()}")
+        return None
+
+    output = result.stdout.decode()
+    # 此处解析输出并提取带宽信息
+    match = re.search(r"\d+ Mbits/sec", output)
+    if match:
+        return match.group(0)
+    else:
+        print("Failed to extract bandwidth information from iperf output")
+        return None
+
+def check_bandwidth(server_hostname):
+    bandwidth = run_iperf_test(server_hostname)
+    if bandwidth:
+        print(f"16、Bandwidth {bandwidth}")
+    else:
+        print("Failed to get bandwidth information.")
+
 # 使用
 def check_ubuntu20_network():
     if not check_dhcpd_process():
@@ -366,6 +390,7 @@ if platform.system() == 'Linux':
         check_software()
         check_pip_packages()
         check_nic_info()
+        check_bandwidth('192.168.109.149')
         
     elif distro_name == 'ubuntu' and major_version == '20':
         check_firewalld()
@@ -383,6 +408,7 @@ if platform.system() == 'Linux':
         check_software()
         check_pip_packages()
         check_nic_info()
+        check_bandwidth('192.168.109.149')
         
     else:
         print('Unsupported Linux distribution')
