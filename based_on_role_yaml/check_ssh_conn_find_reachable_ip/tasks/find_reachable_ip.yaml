@@ -52,7 +52,7 @@
   when: reachable_ips_file.content is defined and reachable_ips_file.content != ""
 
 - name: Open SSH tunnel if reachable IPs found
-  shell: 'ssh -o "StrictHostKeyChecking=no" -L {{ base_ssh_tunnel_port + index }}:{{ item }}:{{ ssh_default_port }} {{ ssh_user }}@{{ ssh_host }} -p{{ ssh_port }} -N & echo $! > {{ pid_ip_dir_path }}/ssh_tunnel_pid_{{ base_ssh_tunnel_port + index }}'
+  shell: 'ssh -o "StrictHostKeyChecking=no" -o "ServerAliveInterval=300" -L {{ base_ssh_tunnel_port + index }}:{{ item }}:{{ ssh_default_port }} {{ ssh_user }}@{{ ssh_host }} -p{{ ssh_port }} -N & echo $! > {{ pid_ip_dir_path }}/ssh_tunnel_pid_{{ base_ssh_tunnel_port + index }}'
   loop: "{{ reachable_ips }}"
   loop_control:
     index_var: index

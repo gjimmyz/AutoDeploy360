@@ -9,6 +9,6 @@
     ssh_tunnel_port: "{{ 30000 + ansible_play_hosts.index(inventory_hostname) }}"
 
 - name: Forward local port to remote host
-  shell: "sshpass -p '{{ ssh_passwd }}' ssh -o StrictHostKeyChecking=no -L {{ ssh_tunnel_port }}:{{ inventory_hostname }}:{{ ssh_default_port }} -p {{ ssh_port }} {{ ssh_user }}@{{ ssh_host }} -N &"
+  shell: "sshpass -p '{{ ssh_passwd }}' ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=300 -L {{ ssh_tunnel_port }}:{{ inventory_hostname }}:{{ ssh_default_port }} -p {{ ssh_port }} {{ ssh_user }}@{{ ssh_host }} -N & "
   delegate_to: localhost
   ignore_errors: yes

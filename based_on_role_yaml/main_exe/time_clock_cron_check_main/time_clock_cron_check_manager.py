@@ -20,7 +20,7 @@ def start_task():
     if subprocess.run(cmd_check, shell=True).returncode == 0:
         print("The task is already scheduled. Please stop the task before starting it again.")
     else:
-        cmd = f'(crontab -l ; echo "29 13 * * * cd {python_exe_path} && python3 {task_path}") | crontab -'
+        cmd = f'(crontab -l ; echo "01 22 * * * cd {python_exe_path} && python3 {task_path}") | crontab -'
         subprocess.run(cmd, shell=True, check=True)
         print("Task has been scheduled successfully.")
         show_task()
