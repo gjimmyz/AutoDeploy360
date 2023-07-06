@@ -1,6 +1,21 @@
 - name: Include vars
   include_vars: ../vars/var_for_US2004.yaml
 
+- name: Copy the deb files
+  copy:
+    src: "{{ item }}"
+    dest: "/tmp/{{ item }}"
+  with_items:
+    - hpssacli-2.40-13.0_amd64.deb
+    - megacli_8.07.14-1_all.deb
+
+- name: Install the deb packages
+  command:
+    cmd: dpkg -i "{{ item }}"
+  with_items:
+    - /tmp/hpssacli-2.40-13.0_amd64.deb
+    - /tmp/megacli_8.07.14-1_all.deb
+
 - name: Set Shanghai timezone
   timezone:
     name: Asia/Shanghai
@@ -96,7 +111,7 @@
     name: "{{ software_list }}"
     state: present
 
-- name: "Get current tuned profile"
+- name: Get current tuned profile
   shell: "tuned-adm active | awk -F': ' '{print $2}'"
   register: current_tuned_profile
   changed_when: False

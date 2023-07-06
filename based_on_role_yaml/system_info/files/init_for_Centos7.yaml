@@ -7,6 +7,31 @@
 - name: "Centos7 disable firewalld"
   service: name=firewalld state=stopped enabled=no
 
+- name: "Centos7 Copy the rpm files"
+  copy:
+    src: "{{ item }}"
+    dest: "/tmp/{{ item }}"
+  with_items:
+    - hpssacli-2.40-13.0.x86_64.rpm
+    - MegaCli-8.07.14-1.noarch.rpm
+
+- name: "Centos7 Install the rpm packages"
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - /tmp/hpssacli-2.40-13.0.x86_64.rpm
+    - /tmp/MegaCli-8.07.14-1.noarch.rpm
+
+- name: "Centos7 change root passwd"
+  user:
+    name: "{{ item.name }}"
+    password: "{{ item.password | password_hash('sha512') }}"
+    update_password: always
+  with_items: "{{ user_info }}"
+  changed_when : false
+  no_log: true
+
 - name: "Centos7 Set Shanghai timezone"
   timezone:
     name: Asia/Shanghai

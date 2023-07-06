@@ -89,12 +89,13 @@ def check_swappiness():
         swappiness = file.read().strip()
     print('7、Swappiness:', swappiness)
 
-# 检查仓库
+# 检查网络
 def is_internal(ip):
     private_networks = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
     ip_obj = ipaddress.ip_address(ip)
     return any(ip_obj in ipaddress.ip_network(n) for n in private_networks)
 
+# 检查仓库
 def check_repo():
     try:
         with open('/etc/yum.repos.d/baseepel.repo', 'r') as file:
@@ -228,11 +229,12 @@ def check_ntp_internal():
 def get_interface_by_pid(pid):
     result = subprocess.run(['ps', '-p', pid, '-o', 'args'], stdout=subprocess.PIPE, universal_newlines=True)
     args = result.stdout.strip()
-    match = re.search(r'(\w+)$', args)  # match the last word in the args line, which should be the interface name
+    match = re.search(r'(\w+)$', args)
     if match:
         return match.group(0)
     return None
 
+# 检查dhcp进程
 def check_dhcpd_process():
     dhcp_processes = ['dhcpd', 'dhclient']
     for process in dhcp_processes:
@@ -301,6 +303,7 @@ def check_pip_packages():
     for i in range(num_lines):
         print('14、' + '、'.join(installed_packages[i*5:(i+1)*5]))
 
+# 检查网卡信息
 def check_nic_info():
     cmd = 'sudo lshw -c network'
     output = subprocess.check_output(cmd, shell=True).decode()
@@ -331,7 +334,8 @@ def check_nic_info():
         else:
             print('model:', product, '\nvendor:', info['vendor'], '\ndriver:', info['driver'], '、driver_ver:', info['driver_ver'], '、nic_num:', count)
 
-def run_iperf_test(server_hostname, port=5201, duration=1, max_attempts=3, delay_between_attempts=5):
+# 检查带宽
+def get_iperf_test(server_hostname, port=5201, duration=1, max_attempts=3, delay_between_attempts=5):
     command = ["iperf3", "-c", server_hostname, "-p", str(port), "-t", str(duration)]
     for attempt in range(1, max_attempts + 1):
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -356,7 +360,7 @@ def run_iperf_test(server_hostname, port=5201, duration=1, max_attempts=3, delay
     return None
 
 def check_bandwidth(server_hostname):
-    bandwidth = run_iperf_test(server_hostname)
+    bandwidth = get_iperf_test(server_hostname)
     if bandwidth:
         if bandwidth >= 700:
             print("16、Bandwidth 700+ Mbits/sec Ok")
@@ -364,6 +368,106 @@ def check_bandwidth(server_hostname):
             print(f"16、Bandwidth {bandwidth} Mbits/sec Warn")
     else:
         print("Failed to get bandwidth information.")
+
+# 检查cpu
+def check_cpu_info():
+    with open("/proc/cpuinfo") as f:
+        for line in f:
+            if line.strip():
+                if line.rstrip('\n').startswith('model name'):
+                    model_name = re.sub( ".*model name.*:", "", line,1)
+                if line.rstrip('\n').startswith('processor'):
+                    processor = re.sub( ".*processor.*:", "", line,1)
+    print(f"17、cpu {int(processor.strip()) + 1} cores {model_name.strip()}")
+
+# 检查内存
+def get_total_memory():
+    with open("/proc/meminfo") as f:
+        for line in f:
+            if line.startswith("MemTotal"):
+                mem_total_kb = int(line.split()[1])
+    mem_total_gb = mem_total_kb / 1024 / 1024
+    return round(mem_total_gb, 2)
+
+def get_memory_module_info():
+    output = subprocess.check_output("dmidecode --type 17", shell=True).decode()
+    max_capacity_output = subprocess.check_output("dmidecode | grep 'Maximum Capacity'", shell=True).decode()
+    num_slots_output = subprocess.check_output("dmidecode --type 16 | grep 'Number Of Devices'", shell=True).decode()
+    module_info = re.findall("Size: ((?:[0-9]+ GB)|(?:[0-9]+ MB)|(?:No Module Installed))", output)
+    # 转换所有模块大小为MB，并过滤掉未安装模块
+    installed_modules = []
+    for info in module_info:
+        if "No Module Installed" not in info:
+            size, unit = re.match(r"([0-9]+) (MB|GB)", info).groups()
+            size_in_mb = int(size) * 1024 if unit == "GB" else int(size)
+            installed_modules.append(size_in_mb)
+    if not installed_modules:
+        raise ValueError("No installed memory module was found.")
+    speeds = list(set(re.findall("Speed: ([0-9]+) MT/s", output)))
+    configs = list(set(re.findall("Configured Memory Speed: ([0-9]+) MT/s", output)))
+    types = list(set(re.findall("Type: ([A-Za-z0-9 ]+)", output)))
+    max_capacity = re.search("Maximum Capacity: (.*)", max_capacity_output).group(1)
+    num_slots = re.search("Number Of Devices: (.*)", num_slots_output).group(1)
+    return len(installed_modules), installed_modules[0], speeds, configs, types, max_capacity, num_slots
+
+def check_memory_info():
+    total_memory = get_total_memory()
+    module_count, module_size, speeds, configs, types, max_capacity, num_slots = get_memory_module_info()
+    print(f"18、Total_Memory {total_memory}G，Max_Capacity {max_capacity}，Num_Slots {num_slots}，used_slots {module_count}，Module_Size {module_size} MB，Memory_Type {'/'.join(types)}，rate {'/'.join(speeds)}，current_config_memory_speed {'/'.join(configs)}")
+
+def get_disk_info(info):
+    # 使用正则表达式匹配相关信息
+    logical_name = re.search(r'logical name: (/dev/\w+)', info)
+    product = re.search(r'product: (.*)', info)
+    description = re.search(r'description: (.*)', info)
+    size = re.search(r'size: (.*)', info)
+    # 如果相关信息存在则获取，否则设为 None
+    logical_name = logical_name.group(1) if logical_name else "None"
+    product = product.group(1) if product else "None"
+    description = description.group(1) if description else "None"
+    size = size.group(1) if size else "None"
+    return logical_name, product, description, size
+
+def check_disk_info():
+    # 使用 subprocess 执行 lshw 命令并获取输出
+    output = subprocess.check_output("lshw -class disk", shell=True).decode()
+    # 按 "*-" 分割输出以获取各硬盘信息
+    disks_info = output.split('*-')[1:]
+    for i, disk_info in enumerate(disks_info, 19):  # 从19开始计数
+        logical_name, product, description, size = get_disk_info(disk_info)
+        print(f'{i}、{logical_name}, Product: {product}，{description}，{size}')
+
+def get_raid_info(output):
+    raid_level_match = re.search("RAID Level\s+:\s+(.*)", output)
+    size_match = re.search("Size\s+:\s+(.*)", output)
+    states_match = re.findall("State\s+:\s+(.*)", output)
+    if raid_level_match is None or size_match is None or not states_match:
+        return None
+    state_counts = {}
+    for state in states_match:
+        state = state.strip()
+        state_counts[state] = state_counts.get(state, 0) + 1
+    state_info = []
+    for state, count in state_counts.items():
+        state_info.append(f"{count} {state}")
+    raid_level = raid_level_match.group(1)
+    size = size_match.group(1)
+    state_info = ', '.join(state_info)
+    return f"RAID Level {raid_level}，Size {size}，State {state_info}"
+
+def check_raid_info():
+    commands = [
+        'cd /opt/MegaRAID/MegaCli/ && ./MegaCli64 -ShowSummary -aALL',
+        'hpssacli ctrl all show config'
+    ]
+    for i, command in enumerate(commands, 20): # 从20开始计数
+        try:
+            output = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT, universal_newlines=True)
+        except subprocess.CalledProcessError as e:
+            output = e.output
+        info = get_raid_info(output)
+        if info is not None:
+            print(f"{i}、{info}")
 
 # 使用
 def check_ubuntu20_network():
@@ -402,6 +506,10 @@ if platform.system() == 'Linux':
         check_pip_packages()
         check_nic_info()
         check_bandwidth('192.168.109.149')
+        check_cpu_info()
+        check_memory_info()
+        check_disk_info()
+        check_raid_info()
         
     elif distro_name == 'ubuntu' and major_version == '20':
         check_firewalld()
@@ -420,6 +528,10 @@ if platform.system() == 'Linux':
         check_pip_packages()
         check_nic_info()
         check_bandwidth('192.168.109.149')
+        check_cpu_info()
+        check_memory_info()
+        check_disk_info()
+        check_raid_info()
         
     else:
         print('Unsupported Linux distribution')

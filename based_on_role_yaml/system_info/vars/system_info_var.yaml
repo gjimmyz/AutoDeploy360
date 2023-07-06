@@ -39,3 +39,6 @@ software_list:
   - lsof
 sysctl_config:
   vm.swappiness: 0
+user_info:
+  - name: 'root'
+    password: '123456'
