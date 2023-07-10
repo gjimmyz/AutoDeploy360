@@ -297,7 +297,18 @@
     name: network
     state: restarted
   become: yes
+  register: network_restart
+  ignore_errors: yes
   when: not network_config_applied.stat.exists and interface_configured.changed
+
+- name: "Centos7 Try ifdown and ifup if network restart failed"
+  block:
+    - command: ifdown {{ ansible_default_ipv4.interface }}
+      become: yes
+
+    - command: ifup {{ ansible_default_ipv4.interface }}
+      become: yes
+  when: not network_config_applied.stat.exists and interface_configured.changed and network_restart.failed
 
 - name: "Centos7 Reset connection"
   meta: reset_connection
