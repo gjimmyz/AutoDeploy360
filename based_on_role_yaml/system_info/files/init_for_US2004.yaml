@@ -1,6 +1,38 @@
 - name: Include vars
   include_vars: ../vars/var_for_US2004.yaml
 
+- name: Check if update-grub has been run
+  stat:
+    path: /var/lib/grub_updated.flag
+  register: grub_updated
+
+- name: Update GRUB timeout
+  lineinfile:
+    path: /etc/grub.d/00_header
+    regexp: '^  set timeout=\${GRUB_RECORDFAIL_TIMEOUT:-(30|5)}'
+    line: '  set timeout=${GRUB_RECORDFAIL_TIMEOUT:-5}'
+    backrefs: yes
+  register: grub_modified
+
+- name: Create flag file
+  file:
+    path: /var/lib/grub_updated.flag
+    state: touch
+  when: grub_modified.changed
+  become: yes
+
+- name: Update GRUB
+  command: update-grub
+  when: grub_modified.changed
+  become: yes
+
+- name: Remove the flag file
+  file:
+    path: /var/lib/grub_updated.flag
+    state: absent
+  when: not grub_updated.stat.exists
+  become: yes
+
 - name: Copy the deb files
   copy:
     src: "{{ item }}"
@@ -82,6 +114,8 @@
       #
       # By default this script does nothing.
       echo "this is test"
+      cd /etc/mm && /bin/bash scripts/start-service.sh cube-node
+      cd /etc/mm && /bin/bash scripts/start-service.sh creeper-service
     insertafter: BOF
     marker: "# {mark} ANSIBLE MANAGED BLOCK"
 
