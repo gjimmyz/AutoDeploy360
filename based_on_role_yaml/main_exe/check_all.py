@@ -18,6 +18,8 @@ import platform
 import distro
 from collections import defaultdict
 import time
+import random
+import io
 
 # 检查SELinux状态
 def check_selinux():
@@ -469,11 +471,68 @@ def check_raid_info():
         if info is not None:
             print(f"{i}、{info}")
 
+import os
+import re
+import time
+import random
+import io
+
+def drop_cache():
+    if os.path.isfile('/proc/sys/vm/drop_caches'):
+        os.system('echo 3 > /proc/sys/vm/drop_caches')
+
+def check_bogomips(output):
+    with open('/proc/cpuinfo') as f:
+        bogomips = sum(float(re.search(r'^bogomips\s*:\s*(\d+\.\d+)\s*$', line).group(1))
+                       for line in f if line.startswith('bogomips'))
+        output.write(f"21、CPU BOGOMIPS:{bogomips:.2f}\n")
+
+def check_regex(output):
+    count = 0
+    starttime = time.time()
+    while True:
+        str = f"{int(random.random() * 1000000)}{time.time()}"
+        if re.search(r'(.+)123.?123', str):
+            pass
+        elapsed = time.time() - starttime
+        if elapsed > 3:
+            break
+        count += 1
+    output.write(f"REGEX/SECOND:{count}\n")
+
+def check_buffered_reads(rootdev, output):
+    drop_cache()
+    start_time = time.time()
+    bytes_read = 0
+    with open(rootdev, 'rb') as f:
+        while time.time() - start_time < 3:
+            bytes_read += len(f.read(2 * 1024 * 1024))
+    bps = bytes_read / ((time.time() - start_time) * 1024 * 1024)  # MB per second
+    output.write(f"BUFFERED READS:{bps:.2f}MB/sec\n")
+
+def get_rootdev():
+    output = os.popen('df -Th').readlines()  # Execute the command and get the output
+    for line in output:
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        filesystem, fstype = parts[0], parts[1]
+        if filesystem.startswith('/dev/') and fstype in ['ext4', 'xfs']:
+            return filesystem
+    raise Exception('No suitable filesystem found')
+
+def check_cpu_tests():
+    output = io.StringIO()
+    check_bogomips(output)
+    check_regex(output)
+    rootdev = get_rootdev()
+    check_buffered_reads(rootdev, output)
+    print(output.getvalue().replace('\n', '，').strip('，'))
+
 # 使用
 def check_ubuntu20_network():
     if not check_dhcpd_process():
         check_ubuntu20_network_config()
-
 # 使用
 def check_static_ip():
     if not check_dhcpd_process():
@@ -486,7 +545,6 @@ if platform.system() == 'Linux':
     distro_name, version_str, _ = distro.linux_distribution(full_distribution_name=False)
     distro_name = distro_name.lower()
     major_version = get_major_version(version_str)
-    
     if distro_name == 'centos' and major_version == '7':
         check_selinux()
         check_firewalld()
@@ -510,6 +568,7 @@ if platform.system() == 'Linux':
         check_memory_info()
         check_disk_info()
         check_raid_info()
+        check_cpu_tests()
         
     elif distro_name == 'ubuntu' and major_version == '20':
         check_firewalld()
@@ -532,6 +591,7 @@ if platform.system() == 'Linux':
         check_memory_info()
         check_disk_info()
         check_raid_info()
+        check_cpu_tests()
         
     else:
         print('Unsupported Linux distribution')

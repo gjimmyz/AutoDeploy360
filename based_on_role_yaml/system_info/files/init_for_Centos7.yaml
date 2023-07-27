@@ -7,6 +7,14 @@
 - name: "Centos7 disable firewalld"
   service: name=firewalld state=stopped enabled=no
 
+- name: "Centos7 Copy binary files"
+  copy:
+    src: "{{ item }}"
+    dest: "/usr/bin/{{ item }}"
+    mode: '0755'
+  with_items:
+    - ossutil64
+
 - name: "Centos7 Copy the rpm files"
   copy:
     src: "{{ item }}"
@@ -14,6 +22,7 @@
   with_items:
     - hpssacli-2.40-13.0.x86_64.rpm
     - MegaCli-8.07.14-1.noarch.rpm
+    - zabbix-agent-3.0.2-1.el7.x86_64.rpm
 
 - name: "Centos7 Install the rpm packages"
   yum:
@@ -22,6 +31,13 @@
   with_items:
     - /tmp/hpssacli-2.40-13.0.x86_64.rpm
     - /tmp/MegaCli-8.07.14-1.noarch.rpm
+    - /tmp/zabbix-agent-3.0.2-1.el7.x86_64.rpm
+
+- name: "Centos7 Start zabbix-agent service and enable at boot"
+  systemd:
+    name: zabbix-agent
+    state: started
+    enabled: yes
 
 - name: "Centos7 change root passwd"
   user:
