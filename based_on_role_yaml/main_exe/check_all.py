@@ -471,12 +471,6 @@ def check_raid_info():
         if info is not None:
             print(f"{i}、{info}")
 
-import os
-import re
-import time
-import random
-import io
-
 def drop_cache():
     if os.path.isfile('/proc/sys/vm/drop_caches'):
         os.system('echo 3 > /proc/sys/vm/drop_caches')
