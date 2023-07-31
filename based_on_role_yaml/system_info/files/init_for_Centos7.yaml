@@ -301,30 +301,17 @@
     path: /var/lib/network_config_applied
   register: network_config_applied
 
-- name: "Centos7 Configure static IP"
-  template:
-    src: ifcfg-template.j2
-    dest: "/etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}"
+- name: "Centos7 Configure static IP using nmcli"
+  nmcli:
+    conn_name: "{{ ansible_default_ipv4.interface }}"
+    ifname: "{{ ansible_default_ipv4.interface }}"
+    type: ethernet
+    state: present
+    ip4: "{{ ansible_default_ipv4.address }}"
+    gw4: "{{ ansible_default_ipv4.gateway }}"
   register: interface_configured
-  when: not network_config_applied.stat.exists and dhcp_used.rc == 0
-
-- name: "Centos7 Restart network"
-  systemd:
-    name: network
-    state: restarted
   become: yes
-  register: network_restart
-  ignore_errors: yes
-  when: not network_config_applied.stat.exists and interface_configured.changed
-
-- name: "Centos7 Try ifdown and ifup if network restart failed"
-  block:
-    - command: ifdown {{ ansible_default_ipv4.interface }}
-      become: yes
-
-    - command: ifup {{ ansible_default_ipv4.interface }}
-      become: yes
-  when: not network_config_applied.stat.exists and interface_configured.changed and network_restart.failed
+  when: not network_config_applied.stat.exists and dhcp_used.rc == 0
 
 - name: "Centos7 Reset connection"
   meta: reset_connection

@@ -21,6 +21,20 @@ import time
 import random
 import io
 
+fmt = '\033[0;3{}m{}\033[0m'.format
+class color:
+    RED    = 1
+    GREEN  = 2
+    YELLOW = 3
+
+def fmt_html(color_code, text):
+    color_mapping = {
+        color.RED: "red",
+        color.GREEN: "green",
+        color.YELLOW: "yellow"
+    }
+    return f"<font color='{color_mapping[color_code]}'>{text}</font>"
+
 # 检查SELinux状态
 def check_selinux():
     result = subprocess.run(['getenforce'], stdout=subprocess.PIPE)
@@ -50,7 +64,6 @@ def check_iptables():
 def check_timezone():
     result = subprocess.run(['timedatectl', 'status'], stdout=subprocess.PIPE)
     output = result.stdout.decode()
-    # 解析输出，找到时区行
     for line in output.split('\n'):
         if 'Time zone:' in line:
             timezone = line.split(':')[1].strip().split(' ')[0]
@@ -142,7 +155,7 @@ def check_ubuntu20_repo():
         result = subprocess.run(['apt-get', 'update'], stdout=subprocess.PIPE)
         update_output = result.stdout.decode()
         hit_lines = [line for line in update_output.split('\n') if line.startswith('Hit:')]
-        repo_names = [line.split()[2].split('/')[-1] for line in hit_lines] # Note: The index is changed here to 2 to get the name of the warehouse
+        repo_names = [line.split()[2].split('/')[-1] for line in hit_lines]
         print(f'8、There are {len(hit_lines)} warehouses: {"、".join(repo_names)}')
     except FileNotFoundError:
         print('sources.list file not found')
@@ -247,7 +260,7 @@ def check_dhcpd_process():
                 interface = get_interface_by_pid(pid)
                 if interface:
                     ip_result = subprocess.run(['ip', 'addr', 'show', interface], stdout=subprocess.PIPE, universal_newlines=True)
-                    if not re.search(r'inet 169\.\d+\.\d+\.\d+', ip_result.stdout):  # check if the interface has an IP starting with 169
+                    if not re.search(r'inet 169\.\d+\.\d+\.\d+', ip_result.stdout):
                         print(f"12、The {process} process is running.")
                         return True
     print("12、The dhcpd or dhclient process is not running:")
@@ -255,7 +268,6 @@ def check_dhcpd_process():
 
 # 检查并打印网络配置
 def check_network_config():
-    # 检查所有网络接口配置文件
     config_dir = "/etc/sysconfig/network-scripts"
     for config_file in os.listdir(config_dir):
         if config_file.startswith("ifcfg-"):
@@ -268,13 +280,11 @@ def check_network_config():
                     elif "static" in line or "none" in line:
                         print(f"{config_file} is configured with a static IP. Configuration details:")
                         for line in config_lines:
-                            # 只打印关键配置信息
                             if any(key in line for key in ["IPADDR", "NETMASK", "GATEWAY", "DNS"]):
                                 print(line.strip())
 
 # 检查并打印网络配置
 def check_ubuntu20_network_config():
-    # 检查所有网络接口配置文件
     config_dir = "/etc/netplan"
     for config_file in os.listdir(config_dir):
         if config_file.endswith(".yaml"):
@@ -295,7 +305,7 @@ def check_pip_packages():
     lines = result.stdout.decode().strip().split('\n')
     installed_packages = []
     pattern = re.compile(r"^(\S+)\s+(\S+)")
-    for line in lines[2:]:  # Skip the first two lines (they contain information messages)
+    for line in lines[2:]:
         match = pattern.match(line)
         if match:
             package_name_version = match.group(1) + " (" + match.group(2) + ")"
@@ -343,15 +353,12 @@ def get_iperf_test(server_hostname, port=5201, duration=1, max_attempts=3, delay
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output = result.stdout.decode()
         if "the server is busy running a test" in output:
-            # Error running iperf, retry after a delay
             time.sleep(delay_between_attempts)
             continue
         elif result.returncode != 0:
-            # Non-retryable error, abort
             print("Non-retryable error encountered. Aborting.")
             return None
         else:
-            # Test was successful, parse and return the bandwidth
             match = re.search(r"(\d+) Mbits/sec", output)
             if match:
                 return int(match.group(1))
@@ -365,11 +372,11 @@ def check_bandwidth(server_hostname):
     bandwidth = get_iperf_test(server_hostname)
     if bandwidth:
         if bandwidth >= 700:
-            print("16、Bandwidth 700+ Mbits/sec Ok")
+            print(f"16、Bandwidth 700+ Mbits/sec {fmt_html(color.GREEN, 'Ok')}")
         else:
-            print(f"16、Bandwidth {bandwidth} Mbits/sec Warn")
+            print(f"16、Bandwidth {bandwidth} Mbits/sec {fmt_html(color.RED, 'Warn')}")
     else:
-        print("Failed to get bandwidth information.")
+        return "Failed to get bandwidth information."
 
 # 检查cpu
 def check_cpu_info():
@@ -396,7 +403,6 @@ def get_memory_module_info():
     max_capacity_output = subprocess.check_output("dmidecode | grep 'Maximum Capacity'", shell=True).decode()
     num_slots_output = subprocess.check_output("dmidecode --type 16 | grep 'Number Of Devices'", shell=True).decode()
     module_info = re.findall("Size: ((?:[0-9]+ GB)|(?:[0-9]+ MB)|(?:No Module Installed))", output)
-    # 转换所有模块大小为MB，并过滤掉未安装模块
     installed_modules = []
     for info in module_info:
         if "No Module Installed" not in info:
@@ -418,12 +424,10 @@ def check_memory_info():
     print(f"18、Total_Memory {total_memory}G，Max_Capacity {max_capacity}，Num_Slots {num_slots}，used_slots {module_count}，Module_Size {module_size} MB，Memory_Type {'/'.join(types)}，rate {'/'.join(speeds)}，current_config_memory_speed {'/'.join(configs)}")
 
 def get_disk_info(info):
-    # 使用正则表达式匹配相关信息
     logical_name = re.search(r'logical name: (/dev/\w+)', info)
     product = re.search(r'product: (.*)', info)
     description = re.search(r'description: (.*)', info)
     size = re.search(r'size: (.*)', info)
-    # 如果相关信息存在则获取，否则设为 None
     logical_name = logical_name.group(1) if logical_name else "None"
     product = product.group(1) if product else "None"
     description = description.group(1) if description else "None"
@@ -431,11 +435,9 @@ def get_disk_info(info):
     return logical_name, product, description, size
 
 def check_disk_info():
-    # 使用 subprocess 执行 lshw 命令并获取输出
     output = subprocess.check_output("lshw -class disk", shell=True).decode()
-    # 按 "*-" 分割输出以获取各硬盘信息
     disks_info = output.split('*-')[1:]
-    for i, disk_info in enumerate(disks_info, 19):  # 从19开始计数
+    for i, disk_info in enumerate(disks_info, 19):
         logical_name, product, description, size = get_disk_info(disk_info)
         print(f'{i}、{logical_name}, Product: {product}，{description}，{size}')
 
@@ -462,7 +464,7 @@ def check_raid_info():
         'cd /opt/MegaRAID/MegaCli/ && ./MegaCli64 -ShowSummary -aALL',
         'hpssacli ctrl all show config'
     ]
-    for i, command in enumerate(commands, 20): # 从20开始计数
+    for i, command in enumerate(commands, 20):
         try:
             output = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT, universal_newlines=True)
         except subprocess.CalledProcessError as e:
@@ -501,11 +503,11 @@ def check_buffered_reads(rootdev, output):
     with open(rootdev, 'rb') as f:
         while time.time() - start_time < 3:
             bytes_read += len(f.read(2 * 1024 * 1024))
-    bps = bytes_read / ((time.time() - start_time) * 1024 * 1024)  # MB per second
+    bps = bytes_read / ((time.time() - start_time) * 1024 * 1024)
     output.write(f"BUFFERED READS:{bps:.2f}MB/sec\n")
 
 def get_rootdev():
-    output = os.popen('df -Th').readlines()  # Execute the command and get the output
+    output = os.popen('df -Th').readlines()
     for line in output:
         parts = line.split()
         if len(parts) < 2:
