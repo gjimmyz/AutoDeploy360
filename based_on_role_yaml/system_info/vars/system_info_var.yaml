@@ -2,7 +2,7 @@ lock_file_timeout: 86400
 ssh_user: user
 ntp_server_1: 10.xxx.xxx.42
 ntp_server_2: 10.xxx.xxx.102
-internet_check_ips: ["8.8.8.8", "1.1.1.1", "202.96.209.5"]
+internet_check_ips: ["223.5.5.5", "8.8.8.8", "114.114.114.114"]
 ping_num: 3
 pip_index_url_wai: 'http://mirrors.aliyun.com/pypi/simple/'
 pip_trusted_host_wai: 'mirrors.aliyun.com'
@@ -40,6 +40,7 @@ software_list:
   - python36-gobject
 sysctl_config:
   vm.swappiness: 0
+  net.core.netdev_budget: 600
 user_info:
   - name: 'root'
     password: '123456'
