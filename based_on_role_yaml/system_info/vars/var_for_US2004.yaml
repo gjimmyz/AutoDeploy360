@@ -29,3 +29,4 @@ software_list:
   - iperf3
 sysctl_config:
   vm.swappiness: 0
+  net.core.netdev_budget: 600

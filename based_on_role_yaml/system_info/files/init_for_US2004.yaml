@@ -240,3 +240,55 @@
     path: /var/lib/netplan_applied
     state: touch
   when: not netplan_applied.stat.exists
+
+- name: "Get the pre-set maximum RX and TX ring parameters"
+  shell: ethtool -g {{ ansible_default_ipv4.interface }} | grep "RX:" | awk 'NR==1{print $2}' && ethtool -g {{ ansible_default_ipv4.interface }} | grep "TX:" | awk 'NR==1{print $2}'
+  register: max_ring_values
+  ignore_errors: true
+  changed_when: false
+
+- name: "Get the current RX and TX ring parameters"
+  shell: ethtool -g {{ ansible_default_ipv4.interface }} | grep "RX:" | awk 'NR==2{print $2}' && ethtool -g {{ ansible_default_ipv4.interface }} | grep "TX:" | awk 'NR==2{print $2}'
+  register: ring_output
+  ignore_errors: true
+  changed_when: false
+
+- name: "Set RX and TX ring parameters to pre-set maximums if not already set"
+  command:
+    cmd: "/sbin/ethtool -G {{ ansible_default_ipv4.interface }} rx {{ max_ring_values.stdout_lines[0] }} tx {{ max_ring_values.stdout_lines[1] }}"
+  ignore_errors: true
+  when: ring_output.stdout_lines[0] != max_ring_values.stdout_lines[0] or ring_output.stdout_lines[1] != max_ring_values.stdout_lines[1]
+
+- name: "Get the pre-set maximum Combined channel parameter"
+  shell: ethtool -l {{ ansible_default_ipv4.interface }} | grep "Combined:" | awk 'NR==1{print $2}'
+  register: max_combined_value
+  ignore_errors: true
+  changed_when: false
+
+- name: "Get the current Combined channel parameter"
+  shell: ethtool -l {{ ansible_default_ipv4.interface }} | grep "Combined:" | awk 'NR==2{print $2}'
+  register: combined_output
+  ignore_errors: true
+  changed_when: false
+
+- name: "Set Combined channel parameter to pre-set maximum if not already set"
+  command:
+    cmd: "/sbin/ethtool -L {{ ansible_default_ipv4.interface }} combined {{ max_combined_value.stdout }}"
+  ignore_errors: true
+  when: combined_output.stdout != max_combined_value.stdout
+
+- name: "Add RX and TX ring parameters settings to rc.local"
+  lineinfile:
+    path: /etc/rc.local
+    line: "/sbin/ethtool -G {{ ansible_default_ipv4.interface }} rx {{ max_ring_values.stdout_lines[0] }} tx {{ max_ring_values.stdout_lines[1] }}"
+    create: yes
+    state: present
+  when: ring_output.stdout_lines[0] != max_ring_values.stdout_lines[0] or ring_output.stdout_lines[1] != max_ring_values.stdout_lines[1]
+
+- name: "Add Combined channel parameters settings to rc.local"
+  lineinfile:
+    path: /etc/rc.local
+    line: "/sbin/ethtool -L {{ ansible_default_ipv4.interface }} combined {{ max_combined_value.stdout }}"
+    create: yes
+    state: present
+  when: combined_output.stdout != max_combined_value.stdout

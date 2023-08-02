@@ -507,15 +507,28 @@ def check_buffered_reads(rootdev, output):
     output.write(f"BUFFERED READS:{bps:.2f}MB/sec\n")
 
 def get_rootdev():
+    max_size = 0
+    max_dev = None
     output = os.popen('df -Th').readlines()
     for line in output:
         parts = line.split()
         if len(parts) < 2:
             continue
-        filesystem, fstype = parts[0], parts[1]
+        filesystem, fstype, size = parts[0], parts[1], parts[2]
         if filesystem.startswith('/dev/') and fstype in ['ext4', 'xfs']:
-            return filesystem
-    raise Exception('No suitable filesystem found')
+            size_value = float(size[:-1])
+            if 'T' in size:
+                size_value *= 1024
+            elif 'M' in size:
+                size_value /= 1024
+            if size_value > max_size:
+                max_size = size_value
+                max_dev = filesystem
+    if max_dev is not None:
+        print(f"Selected device: {max_dev}")
+        return max_dev
+    else:
+        raise Exception('No suitable filesystem found')
 
 def check_cpu_tests():
     output = io.StringIO()
