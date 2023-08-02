@@ -19,6 +19,10 @@
           when: "'install_samba_for_ubuntu20' in roles"
 
         - include_role:
+            name: set_nic_parameters_for_all
+          when: "'set_nic_parameters_for_all' in roles"
+
+        - include_role:
             name: reboot_for_ubuntu20
           when: "'reboot_for_ubuntu20' in roles"
       when: groups['ubuntu_servers'] | length > 0
@@ -38,6 +42,10 @@
         - include_role:
             name: install_samba_for_centos7
           when: "'install_samba_for_centos7' in roles"
+
+        - include_role:
+            name: set_nic_parameters_for_all
+          when: "'set_nic_parameters_for_all' in roles"
 
         - include_role:
             name: reboot_for_centos7

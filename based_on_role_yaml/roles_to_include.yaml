@@ -9,3 +9,4 @@ roles:
   - time_clock_cron_check
   - sshpass_ssh_conn
   - send_to_mail
+  - set_nic_parameters_for_all
