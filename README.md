@@ -17,5 +17,6 @@ https://mp.weixin.qq.com/s?__biz=MzkzMzI0MDg5Ng==&mid=2247485657&idx=1&sn=fcb08a
 mkdir /root/scripts -pv  
 # clone  
 git clone https://github.com/gjimmyz/AutoDeploy360.git  
-11、待添加  
+11、加入在check邮件里信息颜色标识  
+12、待添加
 ![Alt text](./images/WechatIMG3601.png)
