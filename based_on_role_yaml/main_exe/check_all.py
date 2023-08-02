@@ -538,6 +538,57 @@ def check_cpu_tests():
     check_buffered_reads(rootdev, output)
     print(output.getvalue().replace('\n', '，').strip('，'))
 
+def check_dns():
+    try:
+        result = subprocess.run(['resolvectl', 'status'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if result.returncode == 0:
+            output = result.stdout.decode()
+            dns_servers = []
+            for line in output.split('\n'):
+                if 'Current DNS Server:' in line or 'DNS Servers:' in line:
+                    dns_info = line.split(':')[-1].strip()
+                    dns_servers += dns_info.split()
+            print("22、DNS Configuration:", "，".join(dns_servers))
+            return
+    except FileNotFoundError:
+        pass
+
+    try:
+        dns_servers = []
+        with open('/etc/resolv.conf', 'r') as file:
+            for line in file:
+                line = line.strip()
+                if line.startswith('nameserver'):
+                    dns_servers.append(line.split()[1])
+        print("22、DNS Configuration:", "，".join(dns_servers))
+    except FileNotFoundError:
+        print("File /etc/resolv.conf not found.")
+    except PermissionError:
+        print("You don't have the required permissions to read /etc/resolv.conf.")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
+def check_ossutil_cmd():
+    try:
+        result = subprocess.run(['ossutil64', '-v'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if result.returncode == 0:
+            output = result.stdout.decode().strip()
+            version = output.split()[-1]
+            print("23、ossutil version:", version)
+    except FileNotFoundError:
+        pass
+
+def check_zabbix_agent():
+    try:
+        status_result = subprocess.run(['systemctl', 'status', 'zabbix-agent'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        status_output = status_result.stdout.decode().strip()
+        enable_result = subprocess.run(['systemctl', 'list-unit-files'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        enable_output = enable_result.stdout.decode()
+        if ("Active: active" in status_output) and ("zabbix-agent.service                          enabled" in enable_output):
+            print("24、Zabbix-gent status is normal, and starts auto upon startup")
+    except FileNotFoundError:
+        pass
+
 # 使用
 def check_ubuntu20_network():
     if not check_dhcpd_process():
@@ -578,6 +629,9 @@ if platform.system() == 'Linux':
         check_disk_info()
         check_raid_info()
         check_cpu_tests()
+        check_dns()
+        check_ossutil_cmd()
+        check_zabbix_agent()
         
     elif distro_name == 'ubuntu' and major_version == '20':
         check_firewalld()
@@ -601,6 +655,9 @@ if platform.system() == 'Linux':
         check_disk_info()
         check_raid_info()
         check_cpu_tests()
+        check_dns()
+        check_ossutil_cmd()
+        check_zabbix_agent()
         
     else:
         print('Unsupported Linux distribution')

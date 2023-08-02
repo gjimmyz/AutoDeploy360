@@ -122,3 +122,8 @@
   yum:
     name: samba-client
     state: present
+
+- name: Enable samba to start at boot
+  systemd:
+    name: smb
+    enabled: yes
