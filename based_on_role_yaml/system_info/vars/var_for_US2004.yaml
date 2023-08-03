@@ -30,3 +30,6 @@ software_list:
 sysctl_config:
   vm.swappiness: 0
   net.core.netdev_budget: 600
+ssh_keys:
+  - ssh-rsa AAAAB3NzaC1yc2EAAAADAQA............
+  - ssh-rsa AAAAB3NzaC1yc2EAAAADAQB............

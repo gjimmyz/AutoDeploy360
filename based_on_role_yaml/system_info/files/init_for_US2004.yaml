@@ -225,6 +225,19 @@
   meta: reset_connection
   when: not netplan_applied.stat.exists
 
+- name: Rename original 00-installer-config.yaml to backup
+  copy:
+    remote_src: yes
+    src: /etc/netplan/00-installer-config.yaml
+    dest: /etc/netplan/00-installer-config.yaml.bak
+  when: not netplan_applied.stat.exists
+
+- name: Remove original 00-installer-config.yaml
+  file:
+    path: /etc/netplan/00-installer-config.yaml
+    state: absent
+  when: not netplan_applied.stat.exists
+
 - name: Configure static IP
   template:
     src: netplan_template.j2
@@ -240,3 +253,26 @@
     path: /var/lib/netplan_applied
     state: touch
   when: not netplan_applied.stat.exists
+
+- name: Ensure the .ssh directory exists with the right permissions
+  file:
+    path: /root/.ssh
+    state: directory
+    mode: '0700'
+
+- name: Ensure the authorized_keys file exists
+  file:
+    path: /root/.ssh/authorized_keys
+    state: touch
+
+- name: Ensure the authorized_keys file permissions are 600
+  file:
+    path: /root/.ssh/authorized_keys
+    mode: '0600'
+
+- name: Add SSH keys to authorized_keys
+  lineinfile:
+    path: /root/.ssh/authorized_keys
+    line: "{{ item }}"
+    state: present
+  with_items: "{{ ssh_keys }}"

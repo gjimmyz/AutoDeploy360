@@ -20,6 +20,7 @@ from collections import defaultdict
 import time
 import random
 import io
+from datetime import datetime
 
 fmt = '\033[0;3{}m{}\033[0m'.format
 class color:
@@ -589,11 +590,25 @@ def check_zabbix_agent():
     except FileNotFoundError:
         pass
 
-# 使用
+def check_hwclock():
+    hwclock_output = subprocess.getoutput('hwclock --show')
+    hwclock_time_match = re.search(r'\d{2}:\d{2}:\d{2}', hwclock_output)
+    hwclock_time_str = hwclock_time_match.group(0)
+    hwclock_time = datetime.strptime(hwclock_time_str, "%H:%M:%S")
+    date_output = subprocess.getoutput('date')
+    date_time_match = re.search(r'\d{2}:\d{2}:\d{2}', date_output)
+    date_time_str = date_time_match.group(0)
+    date_time = datetime.strptime(date_time_str, "%H:%M:%S")
+    time_difference = abs((date_time - hwclock_time).seconds)
+    if time_difference <= 300:
+        print(f"25、Hardware Clock and System Time difference: {time_difference} seconds {fmt_html(color.GREEN, 'Ok')}")
+    else:
+        print(f"25、Hardware Clock and System Time difference: {time_difference} seconds {fmt_html(color.RED, 'Warn')}")
+
 def check_ubuntu20_network():
     if not check_dhcpd_process():
         check_ubuntu20_network_config()
-# 使用
+
 def check_static_ip():
     if not check_dhcpd_process():
         check_network_config()
@@ -632,6 +647,7 @@ if platform.system() == 'Linux':
         check_dns()
         check_ossutil_cmd()
         check_zabbix_agent()
+        check_hwclock()
         
     elif distro_name == 'ubuntu' and major_version == '20':
         check_firewalld()
@@ -658,6 +674,7 @@ if platform.system() == 'Linux':
         check_dns()
         check_ossutil_cmd()
         check_zabbix_agent()
+        check_hwclock()
         
     else:
         print('Unsupported Linux distribution')
