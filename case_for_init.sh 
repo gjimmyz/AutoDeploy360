@@ -1,5 +1,4 @@
-#!/bin/bash
-scripts_path="/root/scripts"
+#!/bin/bashscripts_path="/root/scripts"
 
 if [[ `id -u` -eq 0 ]]
 then
@@ -131,7 +130,6 @@ then
                             python3 ${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe/time_clock_cron_check_main/time_clock_cron_check_manager.py
                             ;;
                         3|c|C)
-                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i ip_all_collection/files/ip_all_collection_hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['ip_all_collection']"
                             python3 ${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe/check_all_ip.py
                             ;;
                         4|d|D)
