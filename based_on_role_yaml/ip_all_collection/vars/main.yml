@@ -1,0 +1,13 @@
+---
+# vars file for ip_all_collection
+currdate: "{{ lookup('pipe', 'date +%Y%m%d') }}"
+currmonth: "{{ lookup('pipe', 'date +%Y%m') }}"
+scripts_dir: "/root/scripts"
+ip_all_collection_path: "{{ scripts_dir }}/AutoDeploy360/based_on_role_yaml/ip_all_collection/files"
+remote_file_path: "{{ scripts_dir }}/monitor_all_ip/{{ currmonth }}/{{ currdate }}/a_ipfile"
+local_file_path: "{{ ip_all_collection_path }}/remote_a_ipfile"
+local_file_clear_path: "{{ ip_all_collection_path }}/remote_a_ipfile_clear"
+temp_remote_combined_file: "/tmp/combined_ip_file.log"
+remote_dir: "{{ scripts_dir }}/nmap_log/{{ currmonth }}/{{ currdate }}/"
+local_combined_file_path: "{{ ip_all_collection_path }}/remote_b_ipfile"
+local_file_extracted_path: "{{ local_combined_file_path }}_extracted"

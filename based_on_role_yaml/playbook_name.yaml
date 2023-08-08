@@ -71,3 +71,11 @@
         - include_role:
             name: send_to_mail
           when: "'send_to_mail' in roles"
+
+- hosts: ip_proxy
+  gather_facts: yes
+  tasks:
+    - block:
+        - include_role:
+            name: ip_all_collection
+          when: "'ip_all_collection' in roles"

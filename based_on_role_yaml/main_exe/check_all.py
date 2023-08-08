@@ -605,6 +605,31 @@ def check_hwclock():
     else:
         print(f"25、Hardware Clock and System Time difference: {time_difference} seconds {fmt_html(color.RED, 'Warn')}")
 
+def check_nic_parameters():
+    result_str = "26、"
+    with open('/etc/rc.local', 'r') as file:
+        content = file.readlines()
+    nic_names = []
+    for line in content:
+        match_g = re.search(r'/sbin/ethtool -G (\S+)', line)
+        match_l = re.search(r'/sbin/ethtool -L (\S+)', line)
+        if match_g:
+            nic_names.append(match_g.group(1))
+        if match_l:
+            nic_names.append(match_l.group(1))
+    nic_names = list(set(nic_names))
+    for nic_name in nic_names:
+        result_str += nic_name + " "
+        command_output_g = subprocess.getoutput(f'/sbin/ethtool -g {nic_name}')
+        rx = re.search(r'Current hardware settings:\nRX:\s+(\d+)', command_output_g).group(1)
+        tx = re.search(r'TX:\s+(\d+)', command_output_g).group(1)
+        result_str += f'rx {rx}，tx {tx}，'
+        command_output_l = subprocess.getoutput(f'/sbin/ethtool -l {nic_name}')
+        combined = re.search(r'Current hardware settings:\n.*\n.*\n.*\nCombined:\s+(\d+)', command_output_l)
+        if combined:
+            result_str += f'Combined {combined.group(1)}'
+    print(result_str)
+
 def check_ubuntu20_network():
     if not check_dhcpd_process():
         check_ubuntu20_network_config()
@@ -648,6 +673,7 @@ if platform.system() == 'Linux':
         check_ossutil_cmd()
         check_zabbix_agent()
         check_hwclock()
+        check_nic_parameters()
         
     elif distro_name == 'ubuntu' and major_version == '20':
         check_firewalld()
@@ -675,6 +701,7 @@ if platform.system() == 'Linux':
         check_ossutil_cmd()
         check_zabbix_agent()
         check_hwclock()
+        check_nic_parameters()
         
     else:
         print('Unsupported Linux distribution')
