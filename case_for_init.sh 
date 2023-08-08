@@ -116,9 +116,10 @@ then
                     echo -e "
                     \033[31m 1|a|A 通过nmap扫描获取主机后，任务是检查时间 \033[0m
                     \033[32m 2|b|B 自定义主机配置，任务是检查时间 \033[0m
-                    \033[33m 3|c|C 计���任务3 \033[0m
-                    \033[34m 4|d|D 返回主菜单 \033[0m
-                    \033[35m 99|q|Q 退出 \033[0m
+                    \033[33m 3|c|C 收���ip \033[0m
+                    \033[34m 4|d|D 计划任务4 \033[0m
+                    \033[35m 5|e|E 返回主菜单 \033[0m
+                    \033[36m 99|q|Q 退出 \033[0m
                     "
                     read -p "请选择二级菜单选项: " submenu_choice
                     case $submenu_choice in
@@ -130,9 +131,13 @@ then
                             python3 ${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe/time_clock_cron_check_main/time_clock_cron_check_manager.py
                             ;;
                         3|c|C)
-                            echo "待更新3"
+                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i ip_all_collection/files/ip_all_collection_hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['ip_all_collection']"
+                            python3 ${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe/check_all_ip.py
                             ;;
                         4|d|D)
+                            echo "待更新4"
+                            ;;
+                        5|e|E)
                             break
                             ;;
                         99|q|Q)
@@ -159,4 +164,3 @@ then
         esac
     done
 fi
-root@922-US2004-test01-vm:~#
