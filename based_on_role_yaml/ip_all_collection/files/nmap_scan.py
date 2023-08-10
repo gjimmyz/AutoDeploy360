@@ -11,10 +11,16 @@
 import logging
 import datetime
 from multiprocessing import Pool
+import os
+
+today_date = datetime.datetime.now().date()
+flag_path = f"/tmp/{today_date.year:04}/{today_date.month:02}/{today_date.day:02}/1"
+
+if os.path.exists(flag_path):
+    print("nmap has run today, will not run again.")
+    exit(0)
 
 log_file_path = "/tmp/temp_log_file.log"
-with open(log_file_path, 'w'):
-    pass
 
 try:
     import nmap3
@@ -22,7 +28,6 @@ except ImportError:
     print("nmap3 module not found. Please install it before running the script.")
     exit(1)
 
-# 将日志格式设置为仅记录消息
 logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(message)s')
 logging.info("Script started at: " + str(datetime.datetime.now()))
 
@@ -43,3 +48,20 @@ def scan_ips(ip_file_path):
 ip_file_path = f"/tmp/all_ip"
 scan_ips(ip_file_path)
 logging.info("Script ended at: " + str(datetime.datetime.now()))
+
+with open(log_file_path, 'r') as file:
+    lines = file.readlines()
+
+if lines[0].startswith("Script started at:") and lines[-1].startswith("Script ended at:"):
+    today_str = str(today_date)
+    if today_str in lines[0] and today_str in lines[-1]:
+        ip_output_file = f"/tmp/{today_date.year:04}/{today_date.month:02}/{today_date.day:02}/filtered_ips.txt"
+        os.makedirs(os.path.dirname(ip_output_file), exist_ok=True)
+        with open(ip_output_file, 'w') as ip_file:
+            for line in lines:
+                if "Linux" in line and line.startswith("IP:"):
+                    ip = line.split(" ")[1]
+                    ip_file.write(ip + '\n')
+        os.makedirs(os.path.dirname(flag_path), exist_ok=True)
+        with open(flag_path, 'w'):
+            pass
