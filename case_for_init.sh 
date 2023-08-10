@@ -1,4 +1,5 @@
-#!/bin/bashscripts_path="/root/scripts"
+#!/bin/bash
+scripts_path="/root/scripts"
 
 if [[ `id -u` -eq 0 ]]
 then
@@ -127,10 +128,10 @@ then
                             cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['time_clock_cron_check']"
                             ;;
                         2|b|B)
-                            python3 ${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe/time_clock_cron_check_main/time_clock_cron_check_manager.py
+                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe && python3 cron_manager.py time_clock_cron_check_main/time_clock_cron_check.txt
                             ;;
                         3|c|C)
-                            python3 ${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe/check_all_ip.py
+                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe && python3 cron_manager.py gather_all_ip/gather_all_ip.txt
                             ;;
                         4|d|D)
                             echo "待更新4"
