@@ -1,5 +1,4 @@
-#!/bin/bash
-scripts_path="/root/scripts"
+#!/bin/bashscripts_path="/root/scripts"
 
 if [[ `id -u` -eq 0 ]]
 then
@@ -75,7 +74,7 @@ then
                                 case $three_menu_choice in
                                     1|a|A)
                                         cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
-                                        cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['install_samba_for_centos7']"
+                                        cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['install_samba_for_centos7','install_samba_for_ubuntu20']"
                                         ;;
                                     2|b|B)
                                         echo "第2个软件"
@@ -116,7 +115,7 @@ then
                     echo -e "
                     \033[31m 1|a|A 通过nmap扫描获取主机后，任务是检查时间 \033[0m
                     \033[32m 2|b|B 自定义主机配置，任务是检查时间 \033[0m
-                    \033[33m 3|c|C 收���ip \033[0m
+                    \033[33m 3|c|C 收集ip \033[0m
                     \033[34m 4|d|D 计划任务4 \033[0m
                     \033[35m 5|e|E 返回主菜单 \033[0m
                     \033[36m 99|q|Q 退出 \033[0m
@@ -158,7 +157,7 @@ then
                 exit 0
                 ;;
             *)
-                echo "再多一次机会给你～"
+                echo "再多一次���会给你～"
                 ;;
         esac
     done
