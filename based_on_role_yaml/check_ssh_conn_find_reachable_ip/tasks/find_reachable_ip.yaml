@@ -35,6 +35,11 @@
   register: ip_scan
   when: not pid_ip_dir_content.files
 
+- name: Debug - IPs found after scanning
+  debug:
+    var: ip_scan.stdout_lines
+  when: ip_scan.stdout is defined and ip_scan.stdout != ""
+
 - name: Record reachable IPs to pid_ip_file_path
   copy:
     content: "{{ ip_scan.stdout }}"

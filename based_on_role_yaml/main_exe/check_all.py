@@ -630,6 +630,35 @@ def check_nic_parameters():
             result_str += f'Combined {combined.group(1)}'
     print(result_str)
 
+def check_samba_status():
+    try:
+        enable_result = subprocess.run(['systemctl', 'is-enabled', 'smbd'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        enable_output = enable_result.stdout.decode().strip()
+        status_result = subprocess.run(['systemctl', 'is-active', 'smbd'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        status_output = status_result.stdout.decode().strip()
+        if status_output == "active" and enable_output == "enabled":
+            print("27、samba status is normal, and starts auto upon startup")
+        else:
+            print("Samba is either not running or not set to auto-start upon boot.")
+        smbclient_result = subprocess.run(['smbclient', '-L', '//localhost', '-N'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        smbclient_output = smbclient_result.stdout.decode()
+        share_names = [line.split()[0] for line in smbclient_output.split('\n') if line and "Disk" in line and "IPC$" not in line]
+        if share_names:
+            with open("/etc/samba/smb.conf", 'r') as file:
+                lines = file.readlines()
+                for share_name in share_names:
+                    for line in lines:
+                        if f"[{share_name}]" in line:
+                            path_index = lines.index(line) + 1
+                            while "path" not in lines[path_index] and path_index < len(lines):
+                                path_index += 1
+                            if "path" in lines[path_index]:
+                                share_dir = lines[path_index].split('=')[1].strip()
+                                print(f"27、samba share is {share_name}, share dir is {share_dir}")
+                            break
+    except FileNotFoundError:
+        print("Samba or its configuration was not found.")
+
 def check_ubuntu20_network():
     if not check_dhcpd_process():
         check_ubuntu20_network_config()
@@ -674,6 +703,7 @@ if platform.system() == 'Linux':
         check_zabbix_agent()
         check_hwclock()
         check_nic_parameters()
+        check_samba_status()
         
     elif distro_name == 'ubuntu' and major_version == '20':
         check_firewalld()
@@ -702,6 +732,7 @@ if platform.system() == 'Linux':
         check_zabbix_agent()
         check_hwclock()
         check_nic_parameters()
+        check_samba_status()
         
     else:
         print('Unsupported Linux distribution')
