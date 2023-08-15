@@ -1,4 +1,4 @@
 scripts_path=/root/scripts/
-python_exe_path=AutoDeploy360/based_on_role_yaml/main_exe/time_clock_cron_check_main/
+python_exe_path=/root/scripts/AutoDeploy360/based_on_role_yaml/main_exe/time_clock_cron_check_main/
 task_path=time_clock_cron_check.py
-cron_schedule=01 07 * * *
+cron_schedule=00 05 * * *

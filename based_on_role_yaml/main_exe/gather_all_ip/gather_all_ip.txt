@@ -1,4 +1,5 @@
 scripts_path=/root/scripts/
-python_exe_path=AutoDeploy360/based_on_role_yaml/main_exe/gather_all_ip
+python_exe_path=/root/scripts/AutoDeploy360/based_on_role_yaml/main_exe/gather_all_ip
 task_path=gather_all_ip.py
-cron_schedule=01 06 * * *
+cron_schedule_1=00 07 * * *
+cron_schedule_2=00 08 * * *

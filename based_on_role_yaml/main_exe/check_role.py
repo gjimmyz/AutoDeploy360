@@ -12,6 +12,7 @@ import os
 import subprocess
 from datetime import datetime
 import hashlib
+import argparse
 
 os.environ['PATH'] = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
 
@@ -27,6 +28,11 @@ day = now.strftime("%d")
 output_dir = scripts_path + f"AutoDeploy360/machine_information/{year}/{month}/{day}/"
 output_mail_file_path = output_dir + "output_mail.txt"
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="执行脚本以生成主机清单，获取事实和发送邮件。")
+    parser.add_argument("-c", "--custom-hosts", help="自定义主机清单文件的路径。", type=str)
+    return parser.parse_args()
+
 # Function to compute MD5
 def compute_md5(file_path):
     hash_md5 = hashlib.md5()
@@ -35,10 +41,15 @@ def compute_md5(file_path):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def generate_hosts():
-    # Running ansible-playbook
-    os.chdir(scripts_path + "AutoDeploy360/based_on_role_yaml/")
-    subprocess.run(['ansible-playbook', '-i', 'localhost', 'generate_hosts.yaml'], check=True)
+def generate_hosts(custom_hosts=None):
+    if custom_hosts:
+        # 使用自定义主机清单文件
+        print(f"Using custom hosts file: {custom_hosts}")
+        # 您可以在此处添加代码，以使用您的自定义主机清单文件
+    else:
+        # 使用默认生成主机清单过程
+        os.chdir(scripts_path + "AutoDeploy360/based_on_role_yaml/")
+        subprocess.run(['ansible-playbook', '-i', 'localhost', 'generate_hosts.yaml'], check=True)
 
 def get_facts():
     subprocess.run(['ansible-playbook', '-i', 'get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml', 'get_facts.yaml'], check=True)
@@ -79,6 +90,7 @@ def send_mail():
             f.write(current_md5)
 
 if __name__ == "__main__":
-    generate_hosts()
+    args = parse_args()
+    generate_hosts(custom_hosts=args.custom_hosts)
     get_facts()
     send_mail()
