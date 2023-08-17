@@ -592,9 +592,18 @@ def check_zabbix_agent():
 
 def check_hwclock():
     hwclock_output = subprocess.getoutput('hwclock --show')
-    hwclock_time_match = re.search(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', hwclock_output)
-    hwclock_time_str = hwclock_time_match.group(0)
-    hwclock_time = datetime.strptime(hwclock_time_str, "%Y-%m-%d %H:%M:%S")
+    hwclock_time_match = re.search(r'\w{3} \d{2} \w{3} \d{4} \d{2}:\d{2}:\d{2} (AM|PM)', hwclock_output)
+    if hwclock_time_match:
+        hwclock_time_str = hwclock_time_match.group(0)
+        hwclock_time = datetime.strptime(hwclock_time_str, "%a %d %b %Y %I:%M:%S %p")
+    else:
+        hwclock_time_match = re.search(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', hwclock_output)
+        if hwclock_time_match:
+            hwclock_time_str = hwclock_time_match.group(0)
+            hwclock_time = datetime.strptime(hwclock_time_str, "%Y-%m-%d %H:%M:%S")
+        else:
+            print("Error: Unexpected hwclock format.")
+            return
     date_output = subprocess.getoutput('date "+%Y-%m-%d %H:%M:%S"')  # Get full date and time.
     date_time = datetime.strptime(date_output, "%Y-%m-%d %H:%M:%S")
     time_difference = abs((date_time - hwclock_time).total_seconds())
@@ -637,7 +646,7 @@ def check_samba_status():
         if status_output == "active" and enable_output == "enabled":
             print("27、samba status is normal, and starts auto upon startup")
         else:
-            print("Samba is either not running or not set to auto-start upon boot.")
+            print("27、samba is either not running or not set to auto-start upon boot.")
         smbclient_result = subprocess.run(['smbclient', '-L', '//localhost', '-N'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         smbclient_output = smbclient_result.stdout.decode()
         share_names = [line.split()[0] for line in smbclient_output.split('\n') if line and "Disk" in line and "IPC$" not in line]
@@ -655,7 +664,7 @@ def check_samba_status():
                                 print(f"27、samba share is {share_name}, share dir is {share_dir}")
                             break
     except FileNotFoundError:
-        print("Samba or its configuration was not found.")
+        print("27、samba or its configuration was not found.")
 
 def check_ubuntu20_network():
     if not check_dhcpd_process():

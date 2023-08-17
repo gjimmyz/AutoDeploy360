@@ -101,8 +101,8 @@
   systemd:
     name: smb
     state: restarted
-  when:
-    - samba_config_update.changed
+  #when:
+  #  - samba_config_update.changed
 
 - name: Test samba connection
   shell: 'echo "{{ pass }}" | smbclient //localhost/{{ samba_share_name }} -U "{{ user }}" -c "mkdir testdir; put /etc/hosts testfile; get testfile; rm testfile; rmdir testdir"'
