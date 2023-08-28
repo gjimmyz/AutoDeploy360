@@ -637,16 +637,26 @@ def check_nic_parameters():
             result_str += f'Combined {combined.group(1)}'
     print(result_str)
 
+def get_service_name():
+    os_name = distro.id()
+    if os_name == "ubuntu":
+        return 'smbd'
+    elif os_name == "centos":
+        return 'smb'
+    else:
+        return 'smbd'
+
 def check_samba_status():
+    service_name = get_service_name()
     try:
-        enable_result = subprocess.run(['systemctl', 'is-enabled', 'smbd'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        enable_result = subprocess.run(['systemctl', 'is-enabled', service_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         enable_output = enable_result.stdout.decode().strip()
-        status_result = subprocess.run(['systemctl', 'is-active', 'smbd'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        status_result = subprocess.run(['systemctl', 'is-active', service_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         status_output = status_result.stdout.decode().strip()
         if status_output == "active" and enable_output == "enabled":
-            print("27、samba status is normal, and starts auto upon startup")
+            print(f"27、{service_name} status is normal, and starts auto upon startup")
         else:
-            print("27、samba is either not running or not set to auto-start upon boot.")
+            print(f"27、{service_name} is either not running or not set to auto-start upon boot.")
         smbclient_result = subprocess.run(['smbclient', '-L', '//localhost', '-N'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         smbclient_output = smbclient_result.stdout.decode()
         share_names = [line.split()[0] for line in smbclient_output.split('\n') if line and "Disk" in line and "IPC$" not in line]
@@ -664,7 +674,7 @@ def check_samba_status():
                                 print(f"27、samba share is {share_name}, share dir is {share_dir}")
                             break
     except FileNotFoundError:
-        print("27、samba or its configuration was not found.")
+        print(f"27、{service_name} or its configuration was not found.")
 
 def check_ubuntu20_network():
     if not check_dhcpd_process():
