@@ -90,13 +90,19 @@
     path: /etc/rc.local
   register: rc_local_stat
 
-- name: Ensure /etc/rc.local file exists and has correct shebang
-  ansible.builtin.copy:
-    dest: /etc/rc.local
-    content: "#!/bin/sh -e\n"
+- name: Create /etc/rc.local if it doesn't exist
+  ansible.builtin.file:
+    path: /etc/rc.local
+    state: touch
     mode: '0755'
-    force: no
   when: not rc_local_stat.stat.exists
+
+- name: Ensure /etc/rc.local has correct shebang
+  ansible.builtin.lineinfile:
+    path: /etc/rc.local
+    line: "#!/bin/sh -e"
+    insertbefore: BOF
+    state: present
 
 - name: Insert command into /etc/rc.local
   ansible.builtin.blockinfile:
@@ -114,8 +120,6 @@
       #
       # By default this script does nothing.
       echo "this is test"
-      cd /etc/mm && /bin/bash scripts/start-service.sh cube-node
-      cd /etc/mm && /bin/bash scripts/start-service.sh creeper-service
     insertafter: BOF
     marker: "# {mark} ANSIBLE MANAGED BLOCK"
 
