@@ -11,3 +11,4 @@ roles:
   - send_to_mail
   - set_nic_parameters_for_all
   - ip_all_collection
+  - install_pkg_for_ubuntu20

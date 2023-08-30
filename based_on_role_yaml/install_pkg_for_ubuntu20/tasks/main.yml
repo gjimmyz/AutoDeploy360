@@ -1,0 +1,69 @@
+---
+# tasks file for install_pkg_for_ubuntu20
+- name: Check if the marker file exists
+  stat:
+    path: /var/lib/pkg_file
+  register: marker
+
+- name: Check if cube_node_order_key exists
+  stat:
+    path: cube_node_order_key
+  register: cube_node_order_key_stat
+
+- name: Check if cube_node_key exists
+  stat:
+    path: cube_node_key
+  register: cube_node_key_stat
+
+- block:
+  - name: Check if cube_node_order_key exists and has 2 lines
+    shell: "wc -l cube_node_order_key | awk '{print $1}'"
+    register: cube_node_order_key_lines
+    when: cube_node_order_key_stat.stat.exists
+
+  - name: Run tasks for cube_node_order_key
+    block:
+      - name: Copy install_cube_node_order.pkg to remote host
+        copy:
+          src: install_cube_node_order.pkg
+          dest: /tmp/install_cube_node_order.pkg
+
+      - name: Execute install_cube_node_order.pkg
+        command: "./install_cube_node_order.pkg /etc/mm"
+        args:
+          chdir: /tmp
+    when: cube_node_order_key_lines.stdout == "2"
+
+  - name: Check if cube_node_key exists and has 1 line
+    shell: "wc -l cube_node_key | awk '{print $1}'"
+    register: cube_node_key_lines
+    when: cube_node_key_stat.stat.exists
+
+  - name: Run tasks for cube_node_key
+    block:
+      - name: Copy install_cube_node.pkg to remote host
+        copy:
+          src: install_cube_node.pkg
+          dest: /tmp/install_cube_node.pkg
+
+      - name: Execute install_cube_node.pkg
+        command: "./install_cube_node.pkg /etc/mm"
+        args:
+          chdir: /tmp
+    when: cube_node_key_lines.stdout == "1"
+  when: cube_node_order_key_stat.stat.exists or cube_node_key_stat.stat.exists
+
+- name: Ensure a line is present in the marker file
+  lineinfile:
+    path: /var/lib/pkg_file
+    line: "20230824 d6ae8a728058054984c0893dc394db2aad440197"
+  when:
+    - not marker.stat.exists
+    - cube_node_order_key_stat.stat.exists or cube_node_key_stat.stat.exists
+
+- name: Output a message if none of the key files exist
+  debug:
+    msg: "At least one of cube_node_order_key or cube_node_key must exist for install pkg."
+  when: 
+    - not cube_node_order_key_stat.stat.exists
+    - not cube_node_key_stat.stat.exists

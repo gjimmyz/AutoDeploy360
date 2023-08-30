@@ -19,6 +19,10 @@
           when: "'install_samba_for_ubuntu20' in roles"
 
         - include_role:
+            name: install_pkg_for_ubuntu20
+          when: "'install_pkg_for_ubuntu20' in roles"
+
+        - include_role:
             name: set_nic_parameters_for_all
           when: "'set_nic_parameters_for_all' in roles"
 
