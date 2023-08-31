@@ -1,4 +1,5 @@
-#!/bin/bashscripts_path="/root/scripts"
+#!/bin/bash
+scripts_path="/root/scripts"
 
 if [[ `id -u` -eq 0 ]]
 then
@@ -31,8 +32,7 @@ then
                             cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['system_info','set_nic_parameters_for_all','reboot_for_ubuntu20','reboot_for_centos7']"
                             ;;
                         2|b|B)
-                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
-                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['system_info','install_nic_driver_for_ubuntu20_nuc','set_nic_parameters_for_all','install_samba_for_ubuntu20','reboot_for_ubuntu20']"
+                            python3 ${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe/init_deploy_cube/init_deploy_cube.py
                             ;;
                         3|c|C)
                             python3 ${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe/check_role.py
@@ -157,7 +157,7 @@ then
                 exit 0
                 ;;
             *)
-                echo "再多一次���会给你～"
+                echo "再多一次机会给你～"
                 ;;
         esac
     done
