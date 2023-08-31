@@ -676,6 +676,19 @@ def check_samba_status():
     except FileNotFoundError:
         print(f"27、{service_name} or its configuration was not found.")
 
+def check_cube_order_status(service_name):
+    try:
+        enable_result = subprocess.run(['systemctl', 'is-enabled', service_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        enable_output = enable_result.stdout.decode().strip()
+        status_result = subprocess.run(['systemctl', 'is-active', service_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        status_output = status_result.stdout.decode().strip()
+        if status_output == "active" and enable_output == "enabled":
+            print(f"28、{service_name} status is normal, and starts auto upon startup")
+        else:
+            print(f"28、{service_name} is either not running or not set to auto-start upon boot.")
+    except FileNotFoundError:
+        print(f"28、{service_name} or its configuration was not found.")
+
 def check_ubuntu20_network():
     if not check_dhcpd_process():
         check_ubuntu20_network_config()
@@ -750,6 +763,8 @@ if platform.system() == 'Linux':
         check_hwclock()
         check_nic_parameters()
         check_samba_status()
+        check_cube_order_status('cube-node')
+        check_cube_order_status('creeper-service')
         
     else:
         print('Unsupported Linux distribution')
