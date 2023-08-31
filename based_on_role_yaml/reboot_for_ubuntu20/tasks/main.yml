@@ -13,6 +13,16 @@
     - not lock_file_stat.stat.exists
     - (ansible_facts['uptime_seconds'] | int) <= 86400
 
+- name: Get machine id
+  become: yes
+  shell:  cat /etc/machine-id
+  register: machine_id
+  failed_when: false
+
+- name: Debug output for machine_id
+  debug:
+    var: machine_id.stdout
+
 - name: Restart machine if Ubuntu20 and no lock file exists and uptime < 1 day
   command: /sbin/reboot
   async: 0
