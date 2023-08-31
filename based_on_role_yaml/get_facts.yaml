@@ -57,13 +57,27 @@
     
     - name: Copy check_all.py script to remote
       copy:
-        src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/main_exe/check_all.py"
+        src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/main_exe/check_all/check_all.py"
         dest: /tmp/check_all.py
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
 
-    - name: Run check_all.py script on Ubuntu 20
+    - name: Run check_all.py script on centos7
       shell: "python3 /tmp/check_all.py > /tmp/check_all_output.txt"
+      register: script_output
+      ignore_errors: true
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
+
+    - name: Read the first 5 lines of the output file
+      become: yes
+      shell: "head -n 5 /tmp/check_all_output.txt"
+      register: first_five_lines
+      ignore_errors: true
+      when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7")
+
+    - name: Show first 5 lines of script output
+      debug:
+        msg: "{{ first_five_lines.stdout_lines }}"
+      when: first_five_lines.stdout_lines is defined
 
     - name: Fetch the output to local machine
       fetch:
@@ -90,13 +104,27 @@
 
     - name: Copy check_all.py script to remote
       copy:
-        src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/main_exe/check_all.py"
+        src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/main_exe/check_all/check_all.py"
         dest: /tmp/check_all.py
       when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04'
 
     - name: Run check_all.py script on Ubuntu 20
       shell: "python3 /tmp/check_all.py > /tmp/check_all_output.txt"
+      register: script_output
+      ignore_errors: true
       when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04'
+
+    - name: Read the first 5 lines of the output file
+      become: yes
+      shell: "head -n 5 /tmp/check_all_output.txt"
+      register: first_five_lines
+      ignore_errors: true
+      when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04'
+
+    - name: Show first 5 lines of script output
+      debug:
+        msg: "{{ first_five_lines.stdout_lines }}"
+      when: first_five_lines.stdout_lines is defined
 
     - name: Fetch the output to local machine
       fetch:
@@ -110,7 +138,7 @@
         path: "{{ item }}"
         state: absent
       with_items:
-        - /tmp/check_all.py
-        - /tmp/check_all_output.txt
+        #- /tmp/check_all.py
+        #- /tmp/check_all_output.txt
         - /tmp/var_for_US2004.yaml
       when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04'

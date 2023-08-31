@@ -8,6 +8,29 @@
 #Version:1.0
 #Created:2023-06-06
 #--------------------------------------------------
+import sys
+
+def check_module(module_name):
+    try:
+        __import__(module_name)
+    except ImportError:
+        print(f"The {module_name} module is not installed. Please install it and try again.")
+
+modules_to_check = ['re', 'subprocess', 'os', 'socket', 'ipaddress', 'platform', 'distro',
+                    'collections', 'time', 'random', 'io', 'datetime', 'yaml']
+
+missing_count = 0
+for module in modules_to_check:
+    try:
+        __import__(module)
+    except ImportError:
+        print(f"The {module} module is not installed. Please install it and try again.")
+        missing_count += 1
+print(f"Total missing modules: {missing_count}")
+
+if missing_count > 0:
+    sys.exit(1)
+
 import re
 import yaml
 import subprocess
