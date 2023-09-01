@@ -1,6 +1,18 @@
 #!/bin/bash
 scripts_path="/root/scripts"
 auto_deploy_path="${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe"
+ssh_host="root@10.xxx.xxx.75"
+
+time_clock_cron_check_script="time_clock_cron_check_main/time_clock_cron_check.txt"
+gather_all_ip_script="gather_all_ip/gather_all_ip.txt"
+
+init_for_centos7_script="init_for_centos7_US20/init.py"
+init_deploy_cube_script="init_deploy_cube/init_deploy_cube.py"
+check_all_script="check_all/check_role.py"
+install_samba_script="install_samba/install_samba.py"
+check_time_clock_script="check_time_clock/check_time_clock.py"
+
+retry_message="try again"
 
 function run_script() {
     cd $auto_deploy_path && python3 $1
@@ -8,11 +20,6 @@ function run_script() {
 function run_cron_manager() {
     cd $auto_deploy_path && python3 cron_manager.py $1
 }
-init_for_centos7_script="init_for_centos7_US20/init.py"
-init_deploy_cube_script="init_deploy_cube/init_deploy_cube.py"
-check_all_script="check_all/check_role.py"
-install_samba_script="install_samba/install_samba.py"
-check_time_clock_script="check_time_clock/check_time_clock.py"
 
 if [[ `id -u` -eq 0 ]]
 then
@@ -56,7 +63,7 @@ then
                             exit 0
                             ;;
                         *)
-                            echo "再多一次机会给你～"
+                            echo $retry_message
                             ;;
                     esac
                 done
@@ -88,10 +95,10 @@ then
                                         run_script $install_samba_script
                                         ;;
                                     2|b|B)
-                                        echo "第2个软件"
+                                        echo "Pending 2"
                                         ;;
                                     3|c|C)
-                                        echo "第3个软件"
+                                        echo "Pending 3"
                                         ;;
                                     4|d|D)
                                         break
@@ -100,13 +107,13 @@ then
                                         exit 0
                                         ;;
                                     *)
-                                        echo "再多一次机会给你～"
+                                        echo $retry_message
                                         ;;
                                 esac
                             done
                             ;;
                         2|b|B)
-                            echo "第1个软件"
+                            echo "Pending 1"
                             ;;
                         3|c|C)
                             break
@@ -115,7 +122,7 @@ then
                             exit 0
                             ;;
                         *)
-                            echo "再多一次机会给你～"
+                            echo $retry_message
                             ;;
                     esac
                 done
@@ -137,13 +144,13 @@ then
                             run_script $check_time_clock_script
                             ;;
                         2|b|B)
-                            run_cron_manager "time_clock_cron_check_main/time_clock_cron_check.txt"
+                            run_cron_manager $time_clock_cron_check_script
                             ;;
                         3|c|C)
-                            run_cron_manager "gather_all_ip/gather_all_ip.txt"
+                            run_cron_manager $gather_all_ip_script
                             ;;
                         4|d|D)
-                            echo "待更新4"
+                            echo "Pending 4"
                             ;;
                         5|e|E)
                             break
@@ -152,7 +159,7 @@ then
                             exit 0
                             ;;
                         *)
-                            echo "再多一次机会给你～"
+                            echo $retry_message
                             ;;
                     esac
                 done
@@ -161,13 +168,13 @@ then
                 bash
                 ;;
             5|e|E)
-                ssh root@10.xxx.xxx.75
+                ssh $ssh_host
                 ;;
             99|q|Q)
                 exit 0
                 ;;
             *)
-                echo "再多一次机会给你～"
+                echo $retry_message
                 ;;
         esac
     done
