@@ -66,7 +66,7 @@ def fmt_html(color_code, text):
 def check_selinux():
     result = subprocess.run(['getenforce'], stdout=subprocess.PIPE)
     if 'Disabled' not in result.stdout.decode():
-        print('SELinux is not disabled')
+        print('1、SELinux is not disabled')
     else:
         print('1、SELinux is disabled')
 
@@ -77,13 +77,13 @@ def check_firewalld():
     if status == 'unknown' or status == 'inactive':
         print('2、Firewalld service is inactive')
     else:
-        print('Firewalld service active')
+        print('2、Firewalld service active')
 
 # 检查iptables策略
 def check_iptables():
     result = subprocess.run(['iptables', '-L', '-n'], stdout=subprocess.PIPE)
     if 'policy ACCEPT' not in result.stdout.decode():
-        print('Iptables policies are not empty')
+        print('3、Iptables policies are not empty')
     else:
         print('3、Iptables policies are empty')
 
@@ -96,7 +96,7 @@ def check_timezone():
             timezone = line.split(':')[1].strip().split(' ')[0]
             break
     if timezone != 'Asia/Shanghai':
-        print('System timezone is not Asia/Shanghai')
+        print('4、System timezone is not Asia/Shanghai')
     else:
         print('4、System timezone is Asia/Shanghai')
 
@@ -105,15 +105,26 @@ def check_sudo():
     users_with_sudo = []
     with open('/etc/sudoers', 'r') as file:
         sudoers_file = file.read()
+    find_sudo_users(sudoers_file, users_with_sudo)
+    for filename in os.listdir('/etc/sudoers.d/'):
+        filepath = os.path.join('/etc/sudoers.d/', filename)
+        if os.path.isfile(filepath):
+            with open(filepath, 'r') as file:
+                sudoers_file = file.read()
+            find_sudo_users(sudoers_file, users_with_sudo)
+    if users_with_sudo:
+        print('5、Sudo permissions are correctly set for ' + ', '.join(set(users_with_sudo)))
+    else:
+        print('5、没有用户具有 Sudo NOPASSWD 权限')
+
+def find_sudo_users(sudoers_file, users_with_sudo):
     sudoers_lines = sudoers_file.split('\n')
     for line in sudoers_lines:
         if 'NOPASSWD' in line and not line.strip().startswith('#'):
-            user = re.search(r'^(.*?)\s', line).group(1)
-            users_with_sudo.append(user)
-    if users_with_sudo:
-        print('5、Sudo permissions are correctly set for ' + ', '.join(users_with_sudo))
-    else:
-        print('没有用户具有 Sudo NOPASSWD 权限')
+            match = re.search(r'^(.*?)\s', line)
+            if match:
+                user = match.group(1)
+                users_with_sudo.append(user)
 
 # 检查UseDNS
 def check_UseDNS():
@@ -147,13 +158,13 @@ def check_repo():
             url = baseurl.split('//')[1].split('/')[0]
             ip = socket.gethostbyname(url)
             if is_internal(ip):
-                print(f'8、Repo file contains correct entries for intranet {url}')
+                print(f'8、Repo file baseepel.repo contains correct entries for intranet {url}')
             else:
-                print(f'8、Repo file contains correct entries for internet {url}')
+                print(f'8、Repo file baseepel.repo contains correct entries for internet {url}')
         else:
-            print('Repo file does not contain correct entries for [base_new]')
+            print('8、Repo file baseepel.repo does not contain correct entries for [base_new]')
     except FileNotFoundError:
-        print('Repo file not found')
+        print('8、Repo file baseepel.repo not found')
     result = subprocess.run(['yum', 'makecache'], stdout=subprocess.PIPE)
     last_line = result.stdout.decode().strip().split('\n')[-1]
     if 'Metadata Cache Created' in last_line:
@@ -238,7 +249,7 @@ def check_file_descriptor():
     if all_needed_lines_present:
         print('9、ulimit -n:', result.stdout.decode().strip())
     else:
-        print('Not all required lines present in /etc/security/limits.conf')
+        print('9、Not all required lines present in /etc/security/limits.conf')
 
 # 检查tune优化
 def check_tuned():
@@ -260,13 +271,19 @@ def check_ntp_external():
 
 # 检查内网NTP配置
 def check_ntp_internal():
+    server_lines = []
     with open('/etc/ntp.conf', 'r') as file:
         lines = file.readlines()
     for line in lines:
         if 'iburst' in line:
-            print(line.strip())
+            server_lines.append(line.strip())
     result = subprocess.run(['ntpq', '-pn'], stdout=subprocess.PIPE)
-    print('ntpq -pn:', result.stdout.decode().strip())
+    ntpq_output = result.stdout.decode().strip()
+    if server_lines:
+        print("11、Internal NTP configuration detected. is as follows:")
+        for server_line in server_lines:
+            print(server_line)
+        print(ntpq_output)
 
 def get_interface_by_pid(pid):
     result = subprocess.run(['ps', '-p', pid, '-o', 'args'], stdout=subprocess.PIPE, universal_newlines=True)
@@ -345,7 +362,15 @@ def check_pip_packages():
 # 检查网卡信息
 def check_nic_info():
     cmd = 'sudo lshw -c network'
-    output = subprocess.check_output(cmd, shell=True).decode()
+    try:
+        output = subprocess.check_output(cmd, shell=True).decode()
+    except subprocess.CalledProcessError as e:
+        print("15、Command '{}' returned non-zero exit status {}. Skipping NIC info check.".format(cmd, e.returncode))
+        print("15、cause lshw not install.")
+        return
+    except Exception as e:
+        print("An unexpected error occurred:", e)
+        return
     network_list = output.split('*-network')[1:]
     network_dict = defaultdict(int)
     network_info = {}
@@ -383,7 +408,7 @@ def get_iperf_test(server_hostname, port=5201, duration=1, max_attempts=3, delay
             time.sleep(delay_between_attempts)
             continue
         elif result.returncode != 0:
-            print("Non-retryable error encountered. Aborting.")
+            print("16、Non-retryable error encountered. Aborting Test nic bandwidth.")
             return None
         else:
             match = re.search(r"(\d+) Mbits/sec", output)
@@ -651,16 +676,24 @@ def check_nic_parameters():
         if match_l:
             nic_names.append(match_l.group(1))
     nic_names = list(set(nic_names))
+    if not nic_names:
+        print("26、No nic settings related to ethtool were found.")
+        return
     for nic_name in nic_names:
         result_str += nic_name + " "
         command_output_g = subprocess.getoutput(f'/sbin/ethtool -g {nic_name}')
-        rx = re.search(r'Current hardware settings:\nRX:\s+(\d+)', command_output_g).group(1)
-        tx = re.search(r'TX:\s+(\d+)', command_output_g).group(1)
-        result_str += f'rx {rx}，tx {tx}，'
+        rx = re.search(r'Current hardware settings:\nRX:\s+(\d+)', command_output_g)
+        tx = re.search(r'TX:\s+(\d+)', command_output_g)
+        if rx and tx:
+            result_str += f'rx {rx.group(1)}，tx {tx.group(1)}，'
+        else:
+            result_str += 'rx or tx not found，'
         command_output_l = subprocess.getoutput(f'/sbin/ethtool -l {nic_name}')
         combined = re.search(r'Current hardware settings:\n.*\n.*\n.*\nCombined:\s+(\d+)', command_output_l)
         if combined:
             result_str += f'Combined {combined.group(1)}'
+        else:
+            result_str += 'Combined not found'
     print(result_str)
 
 def get_service_name():
