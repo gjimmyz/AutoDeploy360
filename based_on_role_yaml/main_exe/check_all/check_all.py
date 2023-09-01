@@ -14,7 +14,10 @@ def check_module(module_name):
     try:
         __import__(module_name)
     except ImportError:
-        print(f"The {module_name} module is not installed. Please install it and try again.")
+        if module_name == 'yaml':
+            print("The 'yaml' module is not installed. You can install it using 'pip3 install pyyaml' and try again.")
+        else:
+            print(f"The {module_name} module is not installed. Please install it and try again.")
 
 modules_to_check = ['re', 'subprocess', 'os', 'socket', 'ipaddress', 'platform', 'distro',
                     'collections', 'time', 'random', 'io', 'datetime', 'yaml']
