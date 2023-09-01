@@ -35,7 +35,7 @@ then
                             python3 ${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe/init_deploy_cube/init_deploy_cube.py
                             ;;
                         3|c|C)
-                            python3 ${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe/check_role.py
+                            python3 ${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe/check_all/check_role.py
                             ;;
                         4|d|D)
                             break
