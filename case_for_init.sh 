@@ -1,5 +1,18 @@
 #!/bin/bash
 scripts_path="/root/scripts"
+auto_deploy_path="${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe"
+
+function run_script() {
+    cd $auto_deploy_path && python3 $1
+}
+function run_cron_manager() {
+    cd $auto_deploy_path && python3 cron_manager.py $1
+}
+init_for_centos7_script="init_for_centos7_US20/init.py"
+init_deploy_cube_script="init_deploy_cube/init_deploy_cube.py"
+check_all_script="check_all/check_role.py"
+install_samba_script="install_samba/install_samba.py"
+check_time_clock_script="check_time_clock/check_time_clock.py"
 
 if [[ `id -u` -eq 0 ]]
 then
@@ -19,23 +32,22 @@ then
                 while true
                 do
                     echo -e "
-                    \033[31m 1|a|A 初始化US20+Centos7 \033[0m
-                    \033[32m 2|b|B 迷你PC Intel NUC业务_US2004 8168 Nic Driver \033[0m
-                    \033[33m 3|c|C Check 初始化US20+Centos7 \033[0m
+                    \033[31m 1|a|A 初始化 US20、Centos7 \033[0m
+                    \033[32m 2|b|B 迷你 PC Intel NUC业务_US2004 8168 Nic Driver \033[0m
+                    \033[33m 3|c|C 检查 US20、Centos7 或自定义主机 \033[0m
                     \033[34m 4|d|D 返回主菜单 \033[0m
                     \033[35m 99|q|Q 退出 \033[0m
                     "
-                    read -p "请选择二级���单选项: " submenu_choice
+                    read -p "请选择二级菜单选项: " submenu_choice
                     case $submenu_choice in
                         1|a|A)
-                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
-                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['system_info','set_nic_parameters_for_all','reboot_for_ubuntu20','reboot_for_centos7']"
+                            run_script $init_for_centos7_script
                             ;;
                         2|b|B)
-                            python3 ${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe/init_deploy_cube/init_deploy_cube.py
+                            run_script $init_deploy_cube_script
                             ;;
                         3|c|C)
-                            python3 ${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe/check_all/check_role.py
+                            run_script $check_all_script
                             ;;
                         4|d|D)
                             break
@@ -73,8 +85,7 @@ then
                                 read -p "请选择子菜单选项: " three_menu_choice
                                 case $three_menu_choice in
                                     1|a|A)
-                                        cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
-                                        cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['install_samba_for_centos7','install_samba_for_ubuntu20']"
+                                        run_script $install_samba_script
                                         ;;
                                     2|b|B)
                                         echo "第2个软件"
@@ -123,14 +134,13 @@ then
                     read -p "请选择二级菜单选项: " submenu_choice
                     case $submenu_choice in
                         1|a|A)
-                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i localhost generate_hosts.yaml
-                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml && `which ansible-playbook` -i get_real_can_loginhost_for_create_hosts_yaml/files/hosts.yaml playbook_name.yaml --extra-vars "@roles_to_include.yaml" --extra-vars "roles=['time_clock_cron_check']"
+                            run_script $check_time_clock_script
                             ;;
                         2|b|B)
-                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe && python3 cron_manager.py time_clock_cron_check_main/time_clock_cron_check.txt
+                            run_cron_manager "time_clock_cron_check_main/time_clock_cron_check.txt"
                             ;;
                         3|c|C)
-                            cd ${scripts_path}/AutoDeploy360/based_on_role_yaml/main_exe && python3 cron_manager.py gather_all_ip/gather_all_ip.txt
+                            run_cron_manager "gather_all_ip/gather_all_ip.txt"
                             ;;
                         4|d|D)
                             echo "待更新4"
