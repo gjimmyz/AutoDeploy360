@@ -30,8 +30,8 @@ output_dir = scripts_path + f"AutoDeploy360/machine_information/{year}/{month}/{
 output_mail_file_path = output_dir + "output_mail.txt"
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="执行脚本以生成主机清单，获取事实和发送邮件。")
-    parser.add_argument("-c", "--custom-hosts", help="自定义主机清单文件的路径。", type=str)
+    parser = argparse.ArgumentParser(description="Run the script to generate host inventory, gather facts, and send email.")
+    parser.add_argument("-c", "--custom-hosts", help="Path to the custom host inventory file.", type=str)
     return parser.parse_args()
 
 def compute_md5(file_path):
