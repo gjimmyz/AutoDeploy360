@@ -8,8 +8,16 @@
 #Version:1.0
 #Created:2023-08-30
 #--------------------------------------------------
-import subprocess
 import os
+import sys
+
+current_script_path = os.path.abspath(__file__)
+current_directory = os.path.dirname(current_script_path)
+common_utils_dir = os.path.join(current_directory, '..')
+sys.path.append(common_utils_dir)
+
+import subprocess
+from common_utils import execute_ansible
 
 def read_current_version(version_file_path):
     with open(version_file_path, 'r') as f:
@@ -28,10 +36,6 @@ def check_written_keys(file_name, key_file_dir):
         lines = f.readlines()
     line_count = len(lines)
     return line_count
-
-def execute_ansible(commands):
-    for command in commands:
-        subprocess.run(command, shell=True)
 
 def main():
     root_scripts_path = "/root/scripts"
