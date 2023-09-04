@@ -327,3 +327,26 @@
     path: /var/lib/network_config_applied
     state: touch
   when: not network_config_applied.stat.exists and interface_configured.changed
+
+- name: Ensure the .ssh directory exists with the right permissions
+  file:
+    path: /root/.ssh
+    state: directory
+    mode: '0700'
+
+- name: Ensure the authorized_keys file exists
+  file:
+    path: /root/.ssh/authorized_keys
+    state: touch
+
+- name: Ensure the authorized_keys file permissions are 600
+  file:
+    path: /root/.ssh/authorized_keys
+    mode: '0600'
+
+- name: Add SSH keys to authorized_keys
+  lineinfile:
+    path: /root/.ssh/authorized_keys
+    line: "{{ item }}"
+    state: present
+  with_items: "{{ ssh_keys }}"

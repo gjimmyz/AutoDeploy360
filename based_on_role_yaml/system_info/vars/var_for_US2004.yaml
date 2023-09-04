@@ -34,6 +34,7 @@ software_list:
   - slapd
   - ldap-utils
   - python3-testresources
+  - lftp
 sysctl_config:
   vm.swappiness: 0
   net.core.netdev_budget: 600

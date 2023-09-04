@@ -19,8 +19,8 @@ def check_module(module_name):
         else:
             print(f"The {module_name} module is not installed. Please install it and try again.")
 
-modules_to_check = ['re', 'subprocess', 'os', 'socket', 'ipaddress', 'platform', 'distro',
-                    'collections', 'time', 'random', 'io', 'datetime', 'yaml']
+modules_to_check = ['re','subprocess','os','socket','ipaddress','platform','distro',
+                    'collections','time','random','io','datetime','yaml','socket']
 
 missing_count = 0
 for module in modules_to_check:
@@ -47,6 +47,7 @@ import time
 import random
 import io
 from datetime import datetime
+import socket
 
 fmt = '\033[0;3{}m{}\033[0m'.format
 class color:
@@ -748,6 +749,45 @@ def check_cube_order_status(service_name):
     except FileNotFoundError:
         print(f"28、{service_name} or its configuration was not found.")
 
+def is_port_open(ip, port, timeout=5):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(timeout)
+    try:
+        s.connect((ip, port))
+        return True
+    except (socket.timeout, ConnectionRefusedError):
+        return False
+    finally:
+        s.close()
+
+def run_lftp_command(command, ip, port, user, password):
+    cmd = f'lftp -u {user},{password} -p {port} -e "set xfer:clobber on; {command}; bye" {ip}'
+    result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    bytes_transferred = None
+    elapsed_time = None
+    speed = None
+    pattern = re.compile(r'(\d+) bytes transferred in (\d+) seconds \(([\d.]+)M/s\)')
+    for line in result.stdout.split('\n'):
+        match = pattern.match(line)
+        if match:
+            bytes_transferred = int(match.group(1))
+            elapsed_time = float(match.group(2))
+            speed = float(match.group(3))
+            break
+    return bytes_transferred, elapsed_time, speed
+
+def check_raid_perf(ip, user, password, port):
+    if is_port_open(ip, port):
+        drop_cache()
+        bytes_downloaded, time_downloaded, speed_downloaded = run_lftp_command("get test.iso", ip, port, user, password)
+        print(f"29、download {bytes_downloaded}，all time {time_downloaded} second，speed is {speed_downloaded}M/s")
+        time.sleep(5)
+        drop_cache()
+        bytes_uploaded, time_uploaded, speed_uploaded = run_lftp_command("put test.iso", ip, port, user, password)
+        print(f"29、upload {bytes_uploaded}，all time {time_uploaded} second，speed is {speed_uploaded}M/s")
+    else:
+        print(f"29、Port {port} is not open on {ip}. Aborting tests.")
+
 def check_ubuntu20_network():
     if not check_dhcpd_process():
         check_ubuntu20_network_config()
@@ -793,6 +833,7 @@ if platform.system() == 'Linux':
         check_hwclock()
         check_nic_parameters()
         check_samba_status()
+        check_raid_perf('192.168.1.2','user','password',2121)
         
     elif distro_name == 'ubuntu' and major_version == '20':
         check_firewalld()
@@ -824,6 +865,7 @@ if platform.system() == 'Linux':
         check_samba_status()
         check_cube_order_status('cube-node')
         check_cube_order_status('creeper-service')
+        check_raid_perf('192.168.1.2','user','password',2121)
         
     else:
         print('Unsupported Linux distribution')

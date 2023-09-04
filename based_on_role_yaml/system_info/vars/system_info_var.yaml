@@ -38,9 +38,13 @@ software_list:
   - iperf3
   - lsof
   - python36-gobject
+  - lftp
 sysctl_config:
   vm.swappiness: 0
   net.core.netdev_budget: 600
 user_info:
   - name: 'root'
     password: '123456'
+ssh_keys:
+  - ssh-rsa AAAAB3NzaC1yc2EAAAADAQA............
+  - ssh-rsa AAAAB3NzaC1yc2EAAAADAQB............
