@@ -65,6 +65,12 @@
         dest: /tmp/check_all.py
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7" and proceed_with_tasks)
 
+    - name: Copy config.ini to remote
+      copy:
+        src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/main_exe/check_all/config.ini"
+        dest: "/tmp/config.ini"
+      when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7" and proceed_with_tasks)
+
     - name: Run check_all.py script on centos7
       shell: "python3 /tmp/check_all.py > /tmp/check_all_output.txt"
       register: script_output
@@ -96,6 +102,7 @@
         state: absent
       with_items:
         - /tmp/check_all.py
+        - /tmp/config.ini
         - /tmp/check_all_output.txt
         - /tmp/system_info_var.yaml
       when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7" and proceed_with_tasks)
@@ -110,6 +117,12 @@
       copy:
         src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/main_exe/check_all/check_all.py"
         dest: /tmp/check_all.py
+      when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04' and proceed_with_tasks
+
+    - name: Copy config.ini to remote
+      copy:
+        src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/main_exe/check_all/config.ini"
+        dest: "/tmp/config.ini"
       when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04' and proceed_with_tasks
 
     - name: Run check_all.py script on Ubuntu 20
@@ -143,6 +156,7 @@
         state: absent
       with_items:
         - /tmp/check_all.py
+        - /tmp/config.ini
         - /tmp/check_all_output.txt
         - /tmp/var_for_US2004.yaml
       when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04' and proceed_with_tasks

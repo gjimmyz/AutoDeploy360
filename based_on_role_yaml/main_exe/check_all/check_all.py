@@ -20,7 +20,7 @@ def check_module(module_name):
             print(f"The {module_name} module is not installed. Please install it and try again.")
 
 modules_to_check = ['re','subprocess','os','socket','ipaddress','platform','distro',
-                    'collections','time','random','io','datetime','yaml','socket']
+                    'collections','time','random','io','datetime','yaml','socket','configparser']
 
 missing_count = 0
 for module in modules_to_check:
@@ -48,6 +48,10 @@ import random
 import io
 from datetime import datetime
 import socket
+import configparser
+
+config = configparser.ConfigParser()
+config.read('/tmp/config.ini')
 
 fmt = '\033[0;3{}m{}\033[0m'.format
 class color:
@@ -399,8 +403,11 @@ def check_nic_info():
         else:
             print('model:', product, '\nvendor:', info['vendor'], '\ndriver:', info['driver'], '、driver_ver:', info['driver_ver'], '、nic_num:', count)
 
-# 检查带宽
+# 运行iperf测试以获取带宽
 def get_iperf_test(server_hostname, port=5201, duration=1, max_attempts=3, delay_between_attempts=5):
+    if not is_port_open(server_hostname, port):
+        print(f"16、Port {port} at {server_hostname} is not open。Abort test。")
+        return None
     command = ["iperf3", "-c", server_hostname, "-p", str(port), "-t", str(duration)]
     for attempt in range(1, max_attempts + 1):
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -421,15 +428,16 @@ def get_iperf_test(server_hostname, port=5201, duration=1, max_attempts=3, delay
     print("Failed to get successful iperf run after max attempts. Aborting.")
     return None
 
-def check_bandwidth(server_hostname):
-    bandwidth = get_iperf_test(server_hostname)
+# 检查带宽并输出结果
+def check_bandwidth(server_hostname, port=5201):
+    bandwidth = get_iperf_test(server_hostname, port)
     if bandwidth:
         if bandwidth >= 700:
             print(f"16、Bandwidth 700+ Mbits/sec {fmt_html(color.GREEN, 'Ok')}")
         else:
             print(f"16、Bandwidth {bandwidth} Mbits/sec {fmt_html(color.RED, 'Warn')}")
     else:
-        return "Failed to get bandwidth information."
+        print("16、Failed to get bandwidth information.")
 
 # 检查cpu
 def check_cpu_info():
@@ -821,7 +829,7 @@ if platform.system() == 'Linux':
         check_software()
         check_pip_packages()
         check_nic_info()
-        check_bandwidth('192.168.109.149')
+        check_bandwidth(config['Bandwidth']['IP'])
         check_cpu_info()
         check_memory_info()
         check_disk_info()
@@ -833,7 +841,7 @@ if platform.system() == 'Linux':
         check_hwclock()
         check_nic_parameters()
         check_samba_status()
-        check_raid_perf('192.168.1.2','user','password',2121)
+        check_raid_perf(config['Raid']['IP'], config['Raid']['User'], config['Raid']['Password'], int(config['Raid']['Port']))
         
     elif distro_name == 'ubuntu' and major_version == '20':
         check_firewalld()
@@ -851,7 +859,7 @@ if platform.system() == 'Linux':
         check_software()
         check_pip_packages()
         check_nic_info()
-        check_bandwidth('192.168.109.149')
+        check_bandwidth(config['Bandwidth']['IP'])
         check_cpu_info()
         check_memory_info()
         check_disk_info()
@@ -863,9 +871,9 @@ if platform.system() == 'Linux':
         check_hwclock()
         check_nic_parameters()
         check_samba_status()
-        check_cube_order_status('cube-node')
-        check_cube_order_status('creeper-service')
-        check_raid_perf('192.168.1.2','user','password',2121)
+        for service in config['CubeOrder']['Services'].split(','):
+            check_cube_order_status(service)
+        check_raid_perf(config['Raid']['IP'], config['Raid']['User'], config['Raid']['Password'], int(config['Raid']['Port']))
         
     else:
         print('Unsupported Linux distribution')

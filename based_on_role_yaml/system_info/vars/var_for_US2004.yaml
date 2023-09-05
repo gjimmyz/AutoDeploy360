@@ -35,6 +35,7 @@ software_list:
   - ldap-utils
   - python3-testresources
   - lftp
+  - mailutils
 sysctl_config:
   vm.swappiness: 0
   net.core.netdev_budget: 600
