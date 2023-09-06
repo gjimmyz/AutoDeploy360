@@ -40,6 +40,7 @@ software_list:
   - python36-gobject
   - lftp
   - mailx
+  - fio
 sysctl_config:
   vm.swappiness: 0
   net.core.netdev_budget: 600
