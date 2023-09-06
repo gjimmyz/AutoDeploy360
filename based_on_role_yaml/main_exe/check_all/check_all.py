@@ -19,7 +19,7 @@ def check_module(module_name):
         else:
             print(f"The {module_name} module is not installed. Please install it and try again.")
 
-modules_to_check = ['re','subprocess','os','socket','ipaddress','platform','distro',
+modules_to_check = ['re','subprocess','os','socket','ipaddress','platform','distro','threading','shutil',
                     'collections','time','random','io','datetime','yaml','socket','configparser']
 
 missing_count = 0
@@ -49,9 +49,15 @@ import io
 from datetime import datetime
 import socket
 import configparser
+import threading
+import shutil
 
 config = configparser.ConfigParser()
 config.read('/tmp/config.ini')
+
+def execute_ansible(commands):
+    for command in commands:
+        subprocess.run(command, shell=True)
 
 fmt = '\033[0;3{}m{}\033[0m'.format
 class color:
@@ -432,8 +438,8 @@ def get_iperf_test(server_hostname, port=5201, duration=1, max_attempts=3, delay
 def check_bandwidth(server_hostname, port=5201):
     bandwidth = get_iperf_test(server_hostname, port)
     if bandwidth:
-        if bandwidth >= 700:
-            print(f"16、Bandwidth 700+ Mbits/sec {fmt_html(color.GREEN, 'Ok')}")
+        if bandwidth >= 800:
+            print(f"16、Bandwidth 800+ Mbits/sec {fmt_html(color.GREEN, 'Ok')}")
         else:
             print(f"16、Bandwidth {bandwidth} Mbits/sec {fmt_html(color.RED, 'Warn')}")
     else:
@@ -613,7 +619,6 @@ def check_dns():
             return
     except FileNotFoundError:
         pass
-
     try:
         dns_servers = []
         with open('/etc/resolv.conf', 'r') as file:
@@ -768,33 +773,55 @@ def is_port_open(ip, port, timeout=5):
     finally:
         s.close()
 
-def run_lftp_command(command, ip, port, user, password):
-    cmd = f'lftp -u {user},{password} -p {port} -e "set xfer:clobber on; {command}; bye" {ip}'
-    result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-    bytes_transferred = None
-    elapsed_time = None
-    speed = None
-    pattern = re.compile(r'(\d+) bytes transferred in (\d+) seconds \(([\d.]+)M/s\)')
-    for line in result.stdout.split('\n'):
-        match = pattern.match(line)
-        if match:
-            bytes_transferred = int(match.group(1))
-            elapsed_time = float(match.group(2))
-            speed = float(match.group(3))
-            break
-    return bytes_transferred, elapsed_time, speed
+read_command = config.get('FIO', 'read_command', fallback=None)
+write_command = config.get('FIO', 'write_command', fallback=None)
+read_output_file = config.get('FIO', 'read_output_file', fallback=None)
+write_output_file = config.get('FIO', 'write_output_file', fallback=None)
 
-def check_raid_perf(ip, user, password, port):
-    if is_port_open(ip, port):
-        drop_cache()
-        bytes_downloaded, time_downloaded, speed_downloaded = run_lftp_command("get test.iso", ip, port, user, password)
-        print(f"29、download {bytes_downloaded}，all time {time_downloaded} second，speed is {speed_downloaded}M/s")
-        time.sleep(5)
-        drop_cache()
-        bytes_uploaded, time_uploaded, speed_uploaded = run_lftp_command("put test.iso", ip, port, user, password)
-        print(f"29、upload {bytes_uploaded}，all time {time_uploaded} second，speed is {speed_uploaded}M/s")
+# 解析fio输出文件
+def parse_fio_output(file_path):
+    results = {}
+    try:
+        with open(file_path, 'r') as file:
+            lines = file.readlines()
+            for line in lines:
+                read_match = re.search(r"read: IOPS=(\d+), BW=(\d+MiB/s)", line)
+                write_match = re.search(r"write: IOPS=(\d+), BW=(\d+MiB/s)", line)
+                if read_match:
+                    results['read'] = {
+                        'IOPS': read_match.group(1),
+                        'BW': read_match.group(2)
+                    }
+                elif write_match:
+                    results['write'] = {
+                        'IOPS': write_match.group(1),
+                        'BW': write_match.group(2)
+                    }
+    except FileNotFoundError:
+        return None
+    return results
+
+# 执行磁盘性能测试
+def check_disk_fio():
+    if shutil.which("fio") is None:
+        print("29、Please install 'fio' first and then run the test again.")
+        return
+    execute_ansible([read_command, write_command])
+    read_results = parse_fio_output(read_output_file)
+    write_results = parse_fio_output(write_output_file)
+    if read_results is None or write_results is None:
+        print("An error occurred while parsing the fio output. Make sure the output files exist.")
+        return
+    if 'read' in read_results:
+        print(f"29、Read Command: {read_command}")
+        print(f"29、Read IOPS: {read_results['read']['IOPS']}, Read BW: {read_results['read']['BW']}")
     else:
-        print(f"29、Port {port} is not open on {ip}. Aborting tests.")
+        print("No read metrics found in the fio output.")
+    if 'write' in write_results:
+        print(f"29、Write Command: {write_command}")
+        print(f"29、Write IOPS: {write_results['write']['IOPS']}, Write BW: {write_results['write']['BW']}")
+    else:
+        print("No write metrics found in the fio output.")
 
 def check_ubuntu20_network():
     if not check_dhcpd_process():
@@ -822,7 +849,6 @@ if platform.system() == 'Linux':
         check_repo()
         check_file_descriptor()
         check_tuned()
-        # 根据外网NTP配置的存在与否，决定是否检查内网NTP配置
         if not check_ntp_external():
             check_ntp_internal()
         check_static_ip()
@@ -841,7 +867,7 @@ if platform.system() == 'Linux':
         check_hwclock()
         check_nic_parameters()
         check_samba_status()
-        check_raid_perf(config['Raid']['IP'], config['Raid']['User'], config['Raid']['Password'], int(config['Raid']['Port']))
+        check_disk_fio()
         
     elif distro_name == 'ubuntu' and major_version == '20':
         check_firewalld()
@@ -873,7 +899,7 @@ if platform.system() == 'Linux':
         check_samba_status()
         for service in config['CubeOrder']['Services'].split(','):
             check_cube_order_status(service)
-        check_raid_perf(config['Raid']['IP'], config['Raid']['User'], config['Raid']['Password'], int(config['Raid']['Port']))
+        check_disk_fio()
         
     else:
         print('Unsupported Linux distribution')
