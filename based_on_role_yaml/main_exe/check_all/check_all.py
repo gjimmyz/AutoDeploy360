@@ -9,27 +9,39 @@
 #Created:2023-06-06
 #--------------------------------------------------
 import sys
+import configparser
+
+config_path = '/tmp/config.ini'
+config = configparser.ConfigParser()
+config.read(config_path)
+
+modules_to_check_str = config.get('PythonModules', 'modules_to_check')
+modules_to_check = modules_to_check_str.split(',')
+timeout_sec = config.getint('Time_out', 'timeout', fallback=300)
+bandwidth_server = config['Bandwidth']['IP']
+read_command = config.get('FIO', 'read_command', fallback=None)
+write_command = config.get('FIO', 'write_command', fallback=None)
+read_output_file = config.get('FIO', 'read_output_file', fallback=None)
+write_output_file = config.get('FIO', 'write_output_file', fallback=None)
+output_file = config.get('Check_out_file', 'output_file', fallback='/tmp/check_all_output.txt')
 
 def check_module(module_name):
     try:
         __import__(module_name)
     except ImportError:
         if module_name == 'yaml':
-            print("The 'yaml' module is not installed. You can install it using 'pip3 install pyyaml' and try again.")
+            print("0、The 'yaml' module is not installed. You can install it using 'pip3 install pyyaml' and try again.")
         else:
-            print(f"The {module_name} module is not installed. Please install it and try again.")
-
-modules_to_check = ['re','subprocess','os','socket','ipaddress','platform','distro','threading','shutil',
-                    'collections','time','random','io','datetime','yaml','socket','configparser']
+            print(f"0、The {module_name} module is not installed. Please install it and try again.")
 
 missing_count = 0
 for module in modules_to_check:
     try:
         __import__(module)
     except ImportError:
-        print(f"The {module} module is not installed. Please install it and try again.")
+        print(f"0、The {module} module is not installed. Please install it and try again.")
         missing_count += 1
-print(f"Total missing modules: {missing_count}")
+print(f"0、Total missing modules: {missing_count}")
 
 if missing_count > 0:
     sys.exit(1)
@@ -52,12 +64,18 @@ import configparser
 import threading
 import shutil
 
-config = configparser.ConfigParser()
-config.read('/tmp/config.ini')
-
-def execute_ansible(commands):
-    for command in commands:
-        subprocess.run(command, shell=True)
+def execute_command(command, capture_output=False, check=False):
+    result = subprocess.run(command, stdout=subprocess.PIPE if capture_output else None,
+                            stderr=subprocess.PIPE if capture_output else None,
+                            shell=True)
+    if result.returncode == 0:
+        return {'status': 'success', 'output': result.stdout.decode().strip() if result.stdout else None}
+    elif result.returncode == 127:
+        return {'status': 'command_not_found', 'output': result.stderr.decode().strip()}
+    elif result.returncode == 3 and "systemctl is-active" in command:
+        return {'status': 'success', 'output': result.stdout.decode().strip() if result.stdout else None}
+    else:
+        return {'status': 'error', 'output': result.stderr.decode().strip()}
 
 fmt = '\033[0;3{}m{}\033[0m'.format
 class color:
@@ -75,41 +93,49 @@ def fmt_html(color_code, text):
 
 # 检查SELinux状态
 def check_selinux():
-    result = subprocess.run(['getenforce'], stdout=subprocess.PIPE)
-    if 'Disabled' not in result.stdout.decode():
-        print('1、SELinux is not disabled')
-    else:
-        print('1、SELinux is disabled')
+    result = execute_command('getenforce', capture_output=True, check=False)
+    if result['status'] == 'command_not_found':
+        print('1、SELinux is disabled or getenforce command not found')
+    elif result['status'] == 'success':
+        if 'Disabled' not in result['output']:
+            print('1、SELinux is not disabled')
+        else:
+            print('1、SELinux is disabled')
 
 # 检查firewalld服务状态
 def check_firewalld():
-    result = subprocess.run(['systemctl', 'is-active', 'firewalld'], stdout=subprocess.PIPE)
-    status = result.stdout.decode().strip()
-    if status == 'unknown' or status == 'inactive':
-        print('2、Firewalld service is inactive')
+    result = execute_command('systemctl is-active firewalld', capture_output=True)
+    if result['status'] == 'success':
+        if result['output'] == 'active':
+            print('2、Firewalld service is active')
+        elif result['output'] == 'inactive':
+            print('2、Firewalld service is inactive')
+        elif result['output'] == 'unknown':
+            print('2、Firewalld service is in unknown state')
     else:
-        print('2、Firewalld service active')
+        print('2、Error checking Firewalld status')
 
 # 检查iptables策略
 def check_iptables():
-    result = subprocess.run(['iptables', '-L', '-n'], stdout=subprocess.PIPE)
-    if 'policy ACCEPT' not in result.stdout.decode():
+    result = execute_command('iptables -L -n', capture_output=True)
+    if result['status'] == 'success' and 'policy ACCEPT' not in result['output']:
         print('3、Iptables policies are not empty')
     else:
         print('3、Iptables policies are empty')
 
 # 检查系统时区
 def check_timezone():
-    result = subprocess.run(['timedatectl', 'status'], stdout=subprocess.PIPE)
-    output = result.stdout.decode()
-    for line in output.split('\n'):
-        if 'Time zone:' in line:
-            timezone = line.split(':')[1].strip().split(' ')[0]
-            break
-    if timezone != 'Asia/Shanghai':
-        print('4、System timezone is not Asia/Shanghai')
-    else:
-        print('4、System timezone is Asia/Shanghai')
+    result = execute_command('timedatectl status', capture_output=True)
+    if result['status'] == 'success':
+        output = result['output']
+        for line in output.split('\n'):
+            if 'Time zone:' in line:
+                timezone = line.split(':')[1].strip().split(' ')[0]
+                break
+        if timezone != 'Asia/Shanghai':
+            print('4、System timezone is not Asia/Shanghai')
+        else:
+            print('4、System timezone is Asia/Shanghai')
 
 # 检查sudo权限
 def check_sudo():
@@ -126,7 +152,7 @@ def check_sudo():
     if users_with_sudo:
         print('5、Sudo permissions are correctly set for ' + ', '.join(set(users_with_sudo)))
     else:
-        print('5、没有用户具有 Sudo NOPASSWD 权限')
+        print('5、No user has Sudo NOPASSWD permission')
 
 def find_sudo_users(sudoers_file, users_with_sudo):
     sudoers_lines = sudoers_file.split('\n')
@@ -139,13 +165,14 @@ def find_sudo_users(sudoers_file, users_with_sudo):
 
 # 检查UseDNS
 def check_UseDNS():
-    result = subprocess.run(['grep', '-n', 'UseDNS', '/etc/ssh/sshd_config'], stdout=subprocess.PIPE)
-    lines = result.stdout.decode().splitlines()
-    last_line = None
-    for line in lines:
-        last_line = line
-    if last_line:
-        print('6、UseDNS found at line:', last_line)
+    result = execute_command('grep -n UseDNS /etc/ssh/sshd_config', capture_output=True)
+    if result['status'] == 'success':
+        lines = result['output'].splitlines()
+        last_line = None
+        for line in lines:
+            last_line = line
+        if last_line:
+            print('6、UseDNS found at line:', last_line)
 
 # 检查swappiness
 def check_swappiness():
@@ -275,7 +302,7 @@ def check_ntp_external():
     if any('/usr/sbin/ntpdate stdtime.gov.hk' in job for job in cron_jobs):
         print("11、External NTP configuration detected. crontab is as follows:")
         for job in cron_jobs:
-            print(job)
+            print("11、" + job)
         return True
     else:
         return False
@@ -293,8 +320,8 @@ def check_ntp_internal():
     if server_lines:
         print("11、Internal NTP configuration detected. is as follows:")
         for server_line in server_lines:
-            print(server_line)
-        print(ntpq_output)
+            print("11、" + server_line)
+        print("11、" + ntpq_output)
 
 def get_interface_by_pid(pid):
     result = subprocess.run(['ps', '-p', pid, '-o', 'args'], stdout=subprocess.PIPE, universal_newlines=True)
@@ -331,12 +358,12 @@ def check_network_config():
             for line in config_lines:
                 if line.startswith("BOOTPROTO="):
                     if "dhcp" in line:
-                        print(f"{config_file} is configured with DHCP.")
+                        print(f"12、{config_file} is configured with DHCP.")
                     elif "static" in line or "none" in line:
-                        print(f"{config_file} is configured with a static IP. Configuration details:")
+                        print(f"12、{config_file} is configured with a static IP. Configuration details:")
                         for line in config_lines:
                             if any(key in line for key in ["IPADDR", "NETMASK", "GATEWAY", "DNS"]):
-                                print(line.strip())
+                                print(f"12、{line.strip()}")
 
 # 检查并打印网络配置
 def check_ubuntu20_network_config():
@@ -347,12 +374,12 @@ def check_ubuntu20_network_config():
                 config_dict = yaml.safe_load(file)
             for interface, settings in config_dict['network']['ethernets'].items():
                 if settings.get('dhcp4') is True:
-                    print(f"{interface} is configured with DHCP({config_file}).")
+                    print(f"12、{interface} is configured with DHCP({config_file}).")
                 else:
-                    print(f"{interface} is configured with a static IP({config_file}). Configuration details:")
+                    print(f"12、{interface} is configured with a static IP({config_file}). Configuration details:")
                     for key, value in settings.items():
                         if key in ['addresses', 'gateway4', 'nameservers']:
-                            print(f"{key.upper()}: {value}")
+                            print(f"12、{key.upper()}: {value}")
 
 # 检查pip包
 def check_pip_packages():
@@ -405,9 +432,9 @@ def check_nic_info():
     for product, count in network_dict.items():
         info = network_info[product]
         if product == 'null' and info['vendor'] == 'null':
-            print('model:', product, '、vendor:', info['vendor'], '、driver:', info['driver'], '、driver_ver:', info['driver_ver'], '、nic_num:', count)
+            print('15、model:', product, '、15、vendor:', info['vendor'], '、15、driver:', info['driver'], '、driver_ver:', info['driver_ver'], '、nic_num:', count)
         else:
-            print('model:', product, '\nvendor:', info['vendor'], '\ndriver:', info['driver'], '、driver_ver:', info['driver_ver'], '、nic_num:', count)
+            print('15、model:', product, '\n15、vendor:', info['vendor'], '\n15、driver:', info['driver'], '、driver_ver:', info['driver_ver'], '、nic_num:', count)
 
 # 运行iperf测试以获取带宽
 def get_iperf_test(server_hostname, port=5201, duration=1, max_attempts=3, delay_between_attempts=5):
@@ -531,14 +558,19 @@ def check_raid_info():
         'cd /opt/MegaRAID/MegaCli/ && ./MegaCli64 -ShowSummary -aALL',
         'hpssacli ctrl all show config'
     ]
-    for i, command in enumerate(commands, 20):
-        try:
-            output = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT, universal_newlines=True)
-        except subprocess.CalledProcessError as e:
-            output = e.output
-        info = get_raid_info(output)
-        if info is not None:
-            print(f"{i}、{info}")
+    i = 20
+    for command in commands:
+        result = execute_command(command, capture_output=True)
+        if result['status'] == 'success':
+            info = get_raid_info(result['output'])
+            if info is not None:
+                print(f"{i}、{info}")
+            else:
+                print(f"{i}、No RAID information available for command: '{command}'")
+        elif result['status'] == 'error':
+            print(f"{i}、Error executing command: '{command}'. Error message: {result['output']}")
+        elif result['status'] == 'command_not_found':
+            print(f"{i}、Command not found: '{command}'. Message: {result['output']}")
 
 def drop_cache():
     if os.path.isfile('/proc/sys/vm/drop_caches'):
@@ -592,7 +624,7 @@ def get_rootdev():
                 max_size = size_value
                 max_dev = filesystem
     if max_dev is not None:
-        print(f"Selected device: {max_dev}")
+        print(f"21、Selected device: {max_dev}")
         return max_dev
     else:
         raise Exception('No suitable filesystem found')
@@ -635,25 +667,33 @@ def check_dns():
         print(f"An unexpected error occurred: {e}")
 
 def check_ossutil_cmd():
-    try:
-        result = subprocess.run(['ossutil64', '-v'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if result.returncode == 0:
-            output = result.stdout.decode().strip()
-            version = output.split()[-1]
-            print("23、ossutil version:", version)
-    except FileNotFoundError:
-        pass
+    command = 'ossutil64 -v'
+    result = execute_command(command, capture_output=True)
+    if result['status'] == 'success':
+        output = result['output']
+        version = output.split()[-1]
+        print("23、ossutil version:", version)
+    elif result['status'] == 'command_not_found':
+        print("23、ossutil command not found")
+    else:
+        print(f"23、Error executing ossutil command: {result['output']}")
 
 def check_zabbix_agent():
-    try:
-        status_result = subprocess.run(['systemctl', 'status', 'zabbix-agent'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        status_output = status_result.stdout.decode().strip()
-        enable_result = subprocess.run(['systemctl', 'list-unit-files'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        enable_output = enable_result.stdout.decode()
-        if ("Active: active" in status_output) and ("zabbix-agent.service                          enabled" in enable_output):
-            print("24、Zabbix-gent status is normal, and starts auto upon startup")
-    except FileNotFoundError:
-        pass
+    active_command = 'systemctl is-active zabbix-agent'
+    enabled_command = 'systemctl is-enabled zabbix-agent'
+    active_result = execute_command(active_command, capture_output=True)
+    enabled_result = execute_command(enabled_command, capture_output=True)
+    if active_result['status'] == 'success' and enabled_result['status'] == 'success':
+        active_output = active_result['output']
+        enabled_output = enabled_result['output']
+        if active_output == 'active' and enabled_output == 'enabled':
+            print("24、Zabbix-agent status is normal, and starts auto upon startup")
+        else:
+            print("24、Zabbix-agent status is abnormal or not set to auto-start")
+    elif active_result['status'] == 'command_not_found' or enabled_result['status'] == 'command_not_found':
+        print("24、systemctl command or zabbix-agent service not found")
+    else:
+        print(f"24、Error checking Zabbix-agent status: {active_result['output']}")
 
 def check_hwclock():
     hwclock_output = subprocess.getoutput('hwclock --show')
@@ -773,11 +813,6 @@ def is_port_open(ip, port, timeout=5):
     finally:
         s.close()
 
-read_command = config.get('FIO', 'read_command', fallback=None)
-write_command = config.get('FIO', 'write_command', fallback=None)
-read_output_file = config.get('FIO', 'read_output_file', fallback=None)
-write_output_file = config.get('FIO', 'write_output_file', fallback=None)
-
 # 解析fio输出文件
 def parse_fio_output(file_path):
     results = {}
@@ -806,7 +841,9 @@ def check_disk_fio():
     if shutil.which("fio") is None:
         print("29、Please install 'fio' first and then run the test again.")
         return
-    execute_ansible([read_command, write_command])
+    execute_command(read_command, capture_output=True, check=True)
+    time.sleep(5)
+    execute_command(write_command, capture_output=True, check=True)
     read_results = parse_fio_output(read_output_file)
     write_results = parse_fio_output(write_output_file)
     if read_results is None or write_results is None:
@@ -834,75 +871,73 @@ def check_static_ip():
 def get_major_version(version_str):
     return version_str.split('.')[0]
 
-if platform.system() == 'Linux':
-    distro_name, version_str, _ = distro.linux_distribution(full_distribution_name=False)
-    distro_name = distro_name.lower()
-    major_version = get_major_version(version_str)
-    if distro_name == 'centos' and major_version == '7':
-        check_selinux()
-        check_firewalld()
-        check_iptables()
-        check_timezone()
-        check_sudo()
-        check_UseDNS()
-        check_swappiness()
-        check_repo()
-        check_file_descriptor()
-        check_tuned()
+common_checks = [
+    check_selinux,
+    check_firewalld,
+    check_iptables,
+    check_timezone,
+    check_sudo,
+    check_UseDNS,
+    check_swappiness,
+    check_file_descriptor,
+    check_tuned,
+    check_software,
+    check_pip_packages,
+    check_nic_info,
+    lambda: check_bandwidth(bandwidth_server),
+    check_cpu_info,
+    check_memory_info,
+    check_disk_info,
+    check_raid_info,
+    check_cpu_tests,
+    check_dns,
+    check_ossutil_cmd,
+    check_zabbix_agent,
+    check_hwclock,
+    check_nic_parameters,
+    check_samba_status,
+    check_disk_fio
+]
+
+for service in config['CubeOrder']['Services'].split(','):
+    common_checks.append(lambda s=service: check_cube_order_status(s))
+
+centos7_specific = [
+    check_repo,
+    check_static_ip
+]
+
+ubuntu20_specific = [
+    check_ubuntu20_repo,
+    check_ubuntu20_network
+]
+def main_function():
+    if platform.system() == 'Linux':
+        distro_name, version_str, _ = distro.linux_distribution(full_distribution_name=False)
+        distro_name = distro_name.lower()
+        major_version = get_major_version(version_str)
+        for func in common_checks:
+            func()
         if not check_ntp_external():
             check_ntp_internal()
-        check_static_ip()
-        check_software()
-        check_pip_packages()
-        check_nic_info()
-        check_bandwidth(config['Bandwidth']['IP'])
-        check_cpu_info()
-        check_memory_info()
-        check_disk_info()
-        check_raid_info()
-        check_cpu_tests()
-        check_dns()
-        check_ossutil_cmd()
-        check_zabbix_agent()
-        check_hwclock()
-        check_nic_parameters()
-        check_samba_status()
-        check_disk_fio()
-        
-    elif distro_name == 'ubuntu' and major_version == '20':
-        check_firewalld()
-        check_iptables()
-        check_timezone()
-        check_sudo()
-        check_UseDNS()
-        check_swappiness()
-        check_ubuntu20_repo()
-        check_file_descriptor()
-        check_tuned()
-        if not check_ntp_external():
-            check_ntp_internal()
-        check_ubuntu20_network()
-        check_software()
-        check_pip_packages()
-        check_nic_info()
-        check_bandwidth(config['Bandwidth']['IP'])
-        check_cpu_info()
-        check_memory_info()
-        check_disk_info()
-        check_raid_info()
-        check_cpu_tests()
-        check_dns()
-        check_ossutil_cmd()
-        check_zabbix_agent()
-        check_hwclock()
-        check_nic_parameters()
-        check_samba_status()
-        for service in config['CubeOrder']['Services'].split(','):
-            check_cube_order_status(service)
-        check_disk_fio()
-        
+        if distro_name == 'centos' and major_version == '7':
+            for func in centos7_specific:
+                func()
+        elif distro_name == 'ubuntu' and major_version == '20':
+            for func in ubuntu20_specific:
+                func()
+        else:
+            print('Unsupported Linux distribution')
     else:
-        print('Unsupported Linux distribution')
-        
-else:
-    print('Unsupported operating system')
+        print('Unsupported operating system')
+
+def execute_with_timeout(func, timeout_sec):
+    start_time = time.time()
+    results = func()
+    elapsed_time = time.time() - start_time
+    if results:
+        for result in results:
+            print(result)
+    print(f"30、The script completed successfully. Total time: {elapsed_time:.2f} seconds.")
+
+execute_with_timeout(main_function, timeout_sec)

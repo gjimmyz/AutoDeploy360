@@ -3,12 +3,22 @@
   vars:
     scripts_path: /root/scripts/
     current_date: "{{ lookup('pipe', 'date +%Y/%m/%d') }}"
+    auto_deploy_path: AutoDeploy360
+    machine_info_path: "{{ auto_deploy_path }}/machine_information"
+    based_on_role_path: "{{ auto_deploy_path }}/based_on_role_yaml"
+    tmp_path: /tmp
+    check_all_output_file: check_all_output.txt
+    var_for_US2004_file: var_for_US2004.yaml
+    system_info_var: system_info_var.yaml
+    config_ini_file: config.ini
+    sort_file_py_file: sort_file.py
+    check_all_py_file: check_all.py
 
   tasks:
     - name: Create date directory
       local_action:
         module: file
-        path: "{{ scripts_path }}/AutoDeploy360/machine_information/{{ current_date }}"
+        path: "{{ scripts_path }}/{{ machine_info_path }}/{{ current_date }}"
         state: directory
 
     - name: Collect only facts returned by facter
@@ -53,110 +63,159 @@
       set_fact:
         proceed_with_tasks: "{{ product_suffix != 'no match found' }}"
 
-    - name: Copy system_info_var.yaml to remote
-      copy:
-        src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/system_info/vars/system_info_var.yaml"
-        dest: /tmp/system_info_var.yaml
-      when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7" and proceed_with_tasks)
+    - name: Check if Python3 is installed
+      command: which python3
+      ignore_errors: yes
+      register: python_check
+
+    - name: Set python3_installed fact based on the check
+      set_fact:
+        python3_installed: "{{ python_check.rc == 0 }}"
+
+    - name: Set centos7_condition
+      set_fact:
+        centos7_condition: true
+      when:
+        - ansible_facts['distribution'] == "CentOS"
+        - ansible_facts['distribution_major_version']|int == 7
+        - proceed_with_tasks
+        - python3_installed
+
+    - name: Set centos7_condition to false if not set
+      set_fact:
+        centos7_condition: false
+      when: centos7_condition is not defined
+
+    - name: Set ubuntu20_condition
+      set_fact:
+        ubuntu20_condition: true
+      when:
+        - ansible_facts['os_family'] == 'Debian'
+        - ansible_facts['lsb']['release'] == '20.04'
+        - proceed_with_tasks
+        - python3_installed
+
+    - name: Set ubuntu20_condition to false if not set
+      set_fact:
+        ubuntu20_condition: false
+      when: ubuntu20_condition is not defined
+
+    - block:
+        - name: Copy system_info_var.yaml to remote
+          copy:
+            src: "{{ scripts_path }}/{{ based_on_role_path }}/system_info/vars/{{ system_info_var }}"
+            dest: "{{ tmp_path }}/{{ system_info_var }}"
     
-    - name: Copy check_all.py script to remote
-      copy:
-        src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/main_exe/check_all/check_all.py"
-        dest: /tmp/check_all.py
-      when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7" and proceed_with_tasks)
+        - name: Copy check_all.py script to remote
+          copy:
+            src: "{{ scripts_path }}/{{ based_on_role_path }}/main_exe/check_all/{{ check_all_py_file }}"
+            dest: "{{ tmp_path }}/{{ check_all_py_file }}"
 
-    - name: Copy config.ini to remote
-      copy:
-        src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/main_exe/check_all/config.ini"
-        dest: "/tmp/config.ini"
-      when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7" and proceed_with_tasks)
+        - name: Copy sort_file.py script to remote
+          copy:
+            src: "{{ scripts_path }}/{{ based_on_role_path }}/main_exe/check_all/{{ sort_file_py_file }}"
+            dest: "{{ tmp_path }}/{{ sort_file_py_file }}"
 
-    - name: Run check_all.py script on centos7
-      shell: "python3 /tmp/check_all.py > /tmp/check_all_output.txt"
-      register: script_output
-      ignore_errors: true
-      when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7" and proceed_with_tasks)
+        - name: Copy config.ini to remote
+          copy:
+            src: "{{ scripts_path }}/{{ based_on_role_path }}/main_exe/check_all/{{ config_ini_file }}"
+            dest: "{{ tmp_path }}/{{ config_ini_file }}"
 
-    - name: Read the first 5 lines of the output file
-      become: yes
-      shell: "head -n 5 /tmp/check_all_output.txt"
-      register: first_five_lines
-      ignore_errors: true
-      when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7" and proceed_with_tasks)
+        - name: Run check_all.py script on centos7
+          shell: "python3 {{ tmp_path }}/{{ check_all_py_file }} > {{ tmp_path }}/{{ check_all_output_file }}"
+          register: script_output
+          ignore_errors: true
 
-    - name: Show first 5 lines of script output
-      debug:
-        msg: "{{ first_five_lines.stdout_lines }}"
-      when: first_five_lines.stdout_lines is defined
+        - name: Run sort_file.py script on centos7
+          shell: "python3 {{ tmp_path }}/{{ sort_file_py_file }} {{ tmp_path }}/{{ check_all_output_file }}"
+          register: script_output
+          ignore_errors: true
 
-    - name: Fetch the output to local machine
-      fetch:
-        src: /tmp/check_all_output.txt
-        dest: "{{ scripts_path }}/AutoDeploy360/machine_information/{{ current_date }}/centos7_{{ system_serial }}_{{ product_suffix }}_{{ machine_id.stdout }}"
-        flat: yes
-      when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7" and proceed_with_tasks)
+        - name: Read the first 5 lines of the output file
+          become: yes
+          shell: "head -n 5 {{ tmp_path }}/{{ check_all_output_file }}"
+          register: first_five_lines
+          ignore_errors: true
 
-    - name: Remove temporary files from remote
-      file:
-        path: "{{ item }}"
-        state: absent
-      with_items:
-        - /tmp/check_all.py
-        - /tmp/config.ini
-        - /tmp/check_all_output.txt
-        - /tmp/system_info_var.yaml
-      when: (ansible_facts['distribution'] == "CentOS" and ansible_facts['distribution_major_version'] == "7" and proceed_with_tasks)
+        - name: Show first 5 lines of script output
+          debug:
+            msg: "{{ first_five_lines.stdout_lines }}"
+          when: first_five_lines.stdout_lines is defined
 
-    - name: Copy var_for_US2004.yaml to remote
-      copy:
-        src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/system_info/vars/var_for_US2004.yaml"
-        dest: /tmp/var_for_US2004.yaml
-      when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04' and proceed_with_tasks
+        - name: Fetch the output to local machine
+          fetch:
+            src: "{{ tmp_path }}/{{ check_all_output_file }}"
+            dest: "{{ scripts_path }}{{ machine_info_path }}/{{ current_date }}/centos7_{{ system_serial }}_{{ product_suffix }}_{{ machine_id.stdout }}"
+            flat: yes
 
-    - name: Copy check_all.py script to remote
-      copy:
-        src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/main_exe/check_all/check_all.py"
-        dest: /tmp/check_all.py
-      when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04' and proceed_with_tasks
+        - name: Remove temporary files from remote
+          file:
+            path: "{{ item }}"
+            state: absent
+          with_items:
+            - "{{ tmp_path }}/{{ check_all_py_file }}"
+            - "{{ tmp_path }}/{{ sort_file_py_file }}"
+            - "{{ tmp_path }}/{{ config_ini_file }}"
+            - "{{ tmp_path }}/{{ check_all_output_file }}"
+            - "{{ tmp_path }}/{{ system_info_var }}"
+      when: centos7_condition
 
-    - name: Copy config.ini to remote
-      copy:
-        src: "{{ scripts_path }}/AutoDeploy360/based_on_role_yaml/main_exe/check_all/config.ini"
-        dest: "/tmp/config.ini"
-      when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04' and proceed_with_tasks
+    - block:
+        - name: Copy var_for_US2004.yaml to remote
+          copy:
+            src: "{{ scripts_path }}/{{ based_on_role_path }}/system_info/vars/{{ var_for_US2004_file }}"
+            dest: "{{ tmp_path }}/{{ var_for_US2004_file }}"
 
-    - name: Run check_all.py script on Ubuntu 20
-      shell: "python3 /tmp/check_all.py > /tmp/check_all_output.txt"
-      register: script_output
-      ignore_errors: true
-      when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04' and proceed_with_tasks
+        - name: Copy check_all.py script to remote
+          copy:
+            src: "{{ scripts_path }}{{ based_on_role_path }}/main_exe/check_all/{{ check_all_py_file }}"
+            dest: "{{ tmp_path }}/{{ check_all_py_file }}"
 
-    - name: Read the first 5 lines of the output file
-      become: yes
-      shell: "head -n 5 /tmp/check_all_output.txt"
-      register: first_five_lines
-      ignore_errors: true
-      when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04' and proceed_with_tasks
+        - name: Copy sort_file.py script to remote
+          copy:
+            src: "{{ scripts_path }}{{ based_on_role_path }}/main_exe/check_all/{{ sort_file_py_file }}"
+            dest: "{{ tmp_path }}/{{ sort_file_py_file }}"
 
-    - name: Show first 5 lines of script output
-      debug:
-        msg: "{{ first_five_lines.stdout_lines }}"
-      when: first_five_lines.stdout_lines is defined
+        - name: Copy config.ini to remote
+          copy:
+            src: "{{ scripts_path }}{{ based_on_role_path }}/main_exe/check_all/{{ config_ini_file }}"
+            dest: "{{ tmp_path }}/{{ config_ini_file }}"
 
-    - name: Fetch the output to local machine
-      fetch:
-        src: /tmp/check_all_output.txt
-        dest: "{{ scripts_path }}/AutoDeploy360/machine_information/{{ current_date }}/ubuntu20_{{ system_serial }}_{{ product_suffix }}_{{ machine_id.stdout }}"
-        flat: yes
-      when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04' and proceed_with_tasks
+        - name: Run check_all.py script on Ubuntu 20
+          shell: "python3 {{ tmp_path }}/{{ check_all_py_file }} > {{ tmp_path }}/{{ check_all_output_file }}"
+          register: script_output
+          ignore_errors: true
 
-    - name: Remove temporary files from remote
-      file:
-        path: "{{ item }}"
-        state: absent
-      with_items:
-        - /tmp/check_all.py
-        - /tmp/config.ini
-        - /tmp/check_all_output.txt
-        - /tmp/var_for_US2004.yaml
-      when: ansible_facts['os_family'] == 'Debian' and ansible_facts['lsb']['release'] == '20.04' and proceed_with_tasks
+        - name: Run sort_file.py script on Ubuntu 20
+          shell: "python3 {{ tmp_path }}/{{ sort_file_py_file }} {{ tmp_path }}/{{ check_all_output_file }}"
+          register: script_output
+          ignore_errors: true
+
+        - name: Read the first 5 lines of the output file
+          become: yes
+          shell: "head -n 5 {{ tmp_path }}/{{ check_all_output_file }}"
+          register: first_five_lines
+          ignore_errors: true
+
+        - name: Show first 5 lines of script output
+          debug:
+            msg: "{{ first_five_lines.stdout_lines }}"
+          when: first_five_lines.stdout_lines is defined
+
+        - name: Fetch the output to local machine
+          fetch:
+            src: "{{ tmp_path }}/{{ check_all_output_file }}"
+            dest: "{{ scripts_path }}{{ machine_info_path }}/{{ current_date }}/ubuntu20_{{ system_serial }}_{{ product_suffix }}_{{ machine_id.stdout }}"
+            flat: yes
+
+        - name: Remove temporary files from remote
+          file:
+            path: "{{ item }}"
+            state: absent
+          with_items:
+            - "{{ tmp_path }}/{{ check_all_py_file }}"
+            - "{{ tmp_path }}/{{ sort_file_py_file }}"
+            - "{{ tmp_path }}/{{ config_ini_file }}"
+            - "{{ tmp_path }}/{{ check_all_output_file }}"
+            - "{{ tmp_path }}/{{ var_for_US2004_file }}"
+      when: ubuntu20_condition

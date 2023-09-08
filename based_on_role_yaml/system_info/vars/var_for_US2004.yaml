@@ -37,6 +37,7 @@ software_list:
   - lftp
   - mailutils
   - fio
+  - libncurses5
 sysctl_config:
   vm.swappiness: 0
   net.core.netdev_budget: 600
