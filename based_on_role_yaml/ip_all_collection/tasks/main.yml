@@ -25,7 +25,7 @@
 - name: Remove escape sequences from the file if not ASCII text
   shell: "sed -r 's/\\x1B\\[[0-9;]*[a-zA-Z]//g' {{ local_file_path }} > {{ local_file_clear_path }}"
   delegate_to: localhost
-  when: "'ASCII text' not in file_type.stdout"
+  when: "'with escape sequences' in file_type.stdout"
 
 - name: Combine all files in remote directory
   shell: "cat {{ remote_dir }}*.log > {{ temp_remote_combined_file }}"
@@ -61,8 +61,31 @@
     state: directory
   delegate_to: localhost
 
+- name: Check the file type
+  command: "file {{ local_file_path }}"
+  delegate_to: localhost
+  register: file_type
+
+- name: Debug - Print the file type
+  debug:
+    msg: "The file type is: {{ file_type.stdout }}"
+
+- name: Determine which IP file to concatenate
+  set_fact:
+    ip_file_to_use: "{{ local_file_path }}"
+  when: "'with escape sequences' not in file_type.stdout"
+
+- name: Determine which IP file to concatenate (clear file)
+  set_fact:
+    ip_file_to_use: "{{ local_file_clear_path }}"
+  when: "'with escape sequences' in file_type.stdout"
+
+- name: Debug - Print the IP file chosen
+  debug:
+    msg: "The IP file chosen is: {{ ip_file_to_use }}"
+    
 - name: Concatenate files and remove duplicates
-  shell: "cat {{ 'ASCII text' in file_type.stdout | ternary(local_file_path, local_file_clear_path) }} {{ local_file_extracted_path }} | sort | uniq > {{ dir_ip_log }}/{{ currdate }}/all_ip"
+  shell: "cat {{ ip_file_to_use }} {{ local_file_extracted_path }} | sort | uniq > {{ dir_ip_log }}/{{ currdate }}/all_ip"
   delegate_to: localhost
 
 - name: Set previous date
