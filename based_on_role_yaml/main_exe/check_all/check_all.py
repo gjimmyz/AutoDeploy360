@@ -72,6 +72,8 @@ def execute_command(command, capture_output=False, check=False):
         return {'status': 'success', 'output': result.stdout.decode().strip() if result.stdout else None}
     elif result.returncode == 127:
         return {'status': 'command_not_found', 'output': result.stderr.decode().strip()}
+    elif result.returncode == 1 and "which" in command:
+        return {'status': 'command_failed', 'output': result.stderr.decode().strip()}
     elif result.returncode == 3 and "systemctl is-active" in command:
         return {'status': 'success', 'output': result.stdout.decode().strip() if result.stdout else None}
     else:
@@ -860,6 +862,37 @@ def check_disk_fio():
     else:
         print("No write metrics found in the fio output.")
 
+def check_lock_kernel():
+    apt_20 = "/etc/apt/apt.conf.d/20auto-upgrades"
+    apt_10 = "/etc/apt/apt.conf.d/10periodic"
+    errors = []
+    result_apt_mark = execute_command("which apt-mark", capture_output=True)
+    if result_apt_mark['status'] in ['command_not_found', 'command_failed']:
+        errors.append("apt-mark command not found")
+    missing_configs = []
+    if not os.path.exists(apt_20):
+        missing_configs.append(apt_20)
+    if not os.path.exists(apt_10):
+        missing_configs.append(apt_10)
+    if missing_configs:
+        errors.append(f"{' and '.join(missing_configs)} config not found")
+    if errors:
+        print("30、" + " and ".join(errors))
+        return
+    result = execute_command("apt-mark showhold", capture_output=True)
+    if result['status'] == 'success' and result['output']:
+        print("30、" + result['output'].replace("\n", "，"))
+    else:
+        print("30、No held kernel packages.")
+    with open(apt_20, 'r') as f:
+        content_20 = f.read()
+    with open(apt_10, 'r') as f:
+        content_10 = f.read()
+    if ' "1";' not in content_20 and ' "1";' not in content_10:
+        print(f"30、{apt_10} and {apt_20} is set 0")
+    else:
+        print(f"30、Check the settings in {apt_10} and {apt_20}. Not all values are set to 0.")
+
 def check_ubuntu20_network():
     if not check_dhcpd_process():
         check_ubuntu20_network_config()
@@ -896,7 +929,8 @@ common_checks = [
     check_hwclock,
     check_nic_parameters,
     check_samba_status,
-    check_disk_fio
+    check_disk_fio,
+    check_lock_kernel
 ]
 
 for service in config['CubeOrder']['Services'].split(','):
@@ -938,6 +972,6 @@ def execute_with_timeout(func, timeout_sec):
     if results:
         for result in results:
             print(result)
-    print(f"30、The script completed successfully. Total time: {elapsed_time:.2f} seconds.")
+    print(f"31、The script completed successfully. Total time: {elapsed_time:.2f} seconds.")
 
 execute_with_timeout(main_function, timeout_sec)
