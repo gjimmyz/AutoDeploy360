@@ -4,7 +4,7 @@ ssh_default_port: 22
 ssh_port: 22222
 ssh_user: user
 ip_range_start: 192.xxx.xxx.1
-ip_range_end: 10
+ip_range_end: 192.xxx.xxx.30
 ntp_server_1: 10.xxx.xxx.42
 ntp_server_2: 10.xxx.xxx.102
 system_users:
@@ -13,3 +13,4 @@ system_users:
 pid_ip_dir_path: /tmp/pid_dir
 pid_ip_file_path: "{{ pid_ip_dir_path }}/reachable_ips"
 cache_timeout: 60
+files_directory: "/root/scripts/AutoDeploy360/based_on_role_yaml/check_ssh_conn_find_reachable_ip/files/"

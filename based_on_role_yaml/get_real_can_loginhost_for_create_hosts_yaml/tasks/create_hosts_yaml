@@ -1,6 +1,14 @@
 - name: Include vars
   include_vars: ../vars/system_users.yaml
 
+- name: Debug all_target_ips from previous playbook
+  debug:
+    msg: "The value of all_target_ips from previous playbook is {{ all_target_ips }}"
+
+- name: Debug all_target_ips length
+  debug:
+    msg: "Length of all_target_ips is: {{ all_target_ips | length }}"
+
 - name: Check known_hosts modification time
   ansible.builtin.stat:
     path: "{{ ansible_env.HOME }}/.ssh/known_hosts"
@@ -33,7 +41,7 @@
   shell: 'ssh -o "StrictHostKeyChecking=no" -o "BatchMode=yes" -o "ConnectTimeout=10" -p {{ item[1] + base_ssh_tunnel_port }} {{ item[0] }}@localhost "cat /etc/os-release"'
   with_nested:
     - "{{ users }}"
-    - "{{ range(0, reachable_ips | length) }}"
+    - "{{ range(0, all_target_ips | length) }}"
   register: ssh_test_results
   ignore_errors: true
   failed_when: false

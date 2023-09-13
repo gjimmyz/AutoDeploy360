@@ -1,76 +1,145 @@
 - name: Include vars
   include_vars: ../vars/ssh_relate.yaml
 
-- name: Set cache timeout
+- name: Check required dependencies and files
+  block:
+    - name: Check if ansible.netcommon is installed
+      shell: ansible-galaxy collection list | grep 'ansible.netcommon'
+      register: netcommon_check
+      ignore_errors: true
+      changed_when: false
+
+    - name: Prompt user to install ansible.netcommon if not installed
+      fail:
+        msg: "The Ansible 'ansible.netcommon' collection is required. Please install it."
+      when: netcommon_check.stdout == ""
+
+    - name: Check if fping is installed on remote host
+      command: which fping
+      register: fping_check
+      ignore_errors: true
+      changed_when: false
+      delegate_to: "{{ ssh_host }}"
+
+    - name: Prompt user to install fping on remote host if not installed
+      fail:
+        msg: "'fping' is not installed on remote host. Please install it."
+      when: fping_check.rc != 0
+
+    - name: Check if pid_ip_file_path exists
+      stat:
+        path: "{{ pid_ip_file_path }}"
+      register: ip_file_stat
+
+    - name: If pid_ip_file_path exists, read its content
+      slurp:
+        src: "{{ pid_ip_file_path }}"
+      register: previous_reachable_ips_file
+      when: ip_file_stat.stat.exists
+
+    - name: Extract previously reachable IPs if file was found
+      set_fact:
+        previous_reachable_ips: "{{ (previous_reachable_ips_file.content | b64decode | trim).split('\n') }}"
+      when: ip_file_stat.stat.exists
+
+- name: Generate IPs from range and ping
+  block:
+    - name: Run Python script to generate IPs from range
+      ansible.builtin.command:
+        cmd: python3 generate_ips.py {{ ip_range_start }} {{ ip_range_end }}
+        chdir: "{{ files_directory }}"
+      register: result
+
+    - name: Ping entire IP range using fping on remote machine
+      shell: "fping -a -q -g {{ ip_range_start }} {{ ip_range_end }} || true"
+      register: ping_result
+      delegate_to: "{{ ssh_host }}"
+
+    - name: Extract IPs which responded to ping
+      set_fact:
+        ping_responded_ips: "{{ ping_result.stdout_lines }}"
+
+- name: Decide if we should scan with nmap
+  block:
+    - name: Compare pinged IPs with previously reachable IPs
+      set_fact:
+        should_scan: true
+      when: ip_file_stat.stat.exists and
+            ((previous_reachable_ips | difference(ping_responded_ips)) or
+            (ping_responded_ips | difference(previous_reachable_ips)))
+
+    - name: Set should_scan false if pinged IPs are the same as previously reachable IPs
+      set_fact:
+        should_scan: false
+      when: ip_file_stat.stat.exists and 
+            (previous_reachable_ips | difference(ping_responded_ips)) == [] and
+            (ping_responded_ips | difference(previous_reachable_ips)) == []
+
+    - name: Set should_scan true if pid_ip_file_path does not exist
+      set_fact:
+        should_scan: true
+      when: not ip_file_stat.stat.exists
+
+    - name: Scan IPs for open SSH ports if should_scan is true
+      shell: >
+        ssh -o "StrictHostKeyChecking=no" "{{ ssh_user }}@{{ ssh_host }}" -p"{{ ssh_port }}" "sudo nmap -p{{ ssh_default_port }} -oG - {{ ip_range_start.split('.')[0] }}.{{ ip_range_start.split('.')[1] }}.{{ ip_range_start.split('.')[2] }}.1-{{ ip_range_end.split('.')[-1] }} | awk '/open/ {print $2}'"
+      register: ip_scan
+      when: should_scan
+
+    - name: Ensure the parent directory of pid_ip_file_path exists
+      file:
+        path: "{{ pid_ip_file_path | dirname }}"
+        state: directory
+        mode: '0755'
+      when: should_scan
+
+    - name: Record reachable IPs to pid_ip_file_path if should_scan is true
+      copy:
+        content: "{{ ip_scan.stdout }}"
+        dest: "{{ pid_ip_file_path }}"
+      when: should_scan
+
+    - name: Read reachable IPs from pid_ip_file_path
+      slurp:
+        src: "{{ pid_ip_file_path }}"
+      register: slurped_file_content
+
+    - name: Decode the file content
+      set_fact:
+        reachable_ips: "{{ slurped_file_content['content'] | b64decode }}"
+
+- name: Split the reachable_ips string into lines
   set_fact:
-    cache_timeout: "{{ cache_timeout }}"
+    ip_lines: "{{ reachable_ips.split('\n') }}"
 
-- name: Check if pid_ip_dir_path exists
-  stat:
-    path: "{{ pid_ip_dir_path }}"
-  register: dir_stat
+- name: Initialize an empty list for target IPs
+  set_fact:
+    all_target_ips: []
 
-- name: Delete pid_ip_dir_path if it exists and is older than cache timeout
-  file:
-    path: "{{ pid_ip_dir_path }}"
-    state: absent
-  when: dir_stat.stat.exists and ((ansible_date_time.epoch|int - dir_stat.stat.ctime|int) > cache_timeout)
+- name: Extract IP from the split lines
+  set_fact:
+    all_target_ips: "{{ all_target_ips + [item | regex_search('\\d+\\.\\d+\\.\\d+\\.\\d+')] }}"
+  loop: "{{ ip_lines }}"
+  register: target_ip_result
 
-- name: Check if pid_ip_dir_path is empty
-  find:
-    paths: "{{ pid_ip_dir_path }}"
-    file_type: any
-  register: pid_ip_dir_content
-  ignore_errors: yes
-
-- name: Create pid_ip_dir_path if it does not exist and is empty
-  file:
-    path: "{{ pid_ip_dir_path }}"
-    state: directory
-  when: not pid_ip_dir_content.files
-
-- name: Scan IPs for open SSH ports
-  shell: >
-    ssh -o "StrictHostKeyChecking=no" "{{ ssh_user }}@{{ ssh_host }}" -p"{{ ssh_port }}" "sudo nmap -p{{ ssh_default_port }} -oG - {{ ip_range_start }}-{{ ip_range_end }} | awk '/open/ {match(\$0, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/); print substr(\$0, RSTART, RLENGTH)}'"
-  register: ip_scan
-  when: not pid_ip_dir_content.files
-
-- name: Debug - IPs found after scanning
+- name: Debug output
   debug:
-    var: ip_scan.stdout_lines
-  when: ip_scan.stdout is defined and ip_scan.stdout != ""
-
-- name: Record reachable IPs to pid_ip_file_path
-  copy:
-    content: "{{ ip_scan.stdout }}"
-    dest: "{{ pid_ip_file_path }}"
-  when: ip_scan.stdout is defined and ip_scan.stdout != ""
-
-- name: Read reachable IPs from pid_ip_file_path
-  slurp:
-    src: "{{ pid_ip_file_path }}"
-  register: reachable_ips_file
-
-- name: Extract reachable IPs from pid_ip_file_path content
-  set_fact:
-    reachable_ips: "{{ reachable_ips_file.content | b64decode | trim | split('\n') }}"
-  when: reachable_ips_file.content is defined and reachable_ips_file.content != ""
+    msg: "The value of all_target_ips is {{ all_target_ips }}"
 
 - name: Open SSH tunnel if reachable IPs found
-  shell: 'ssh -o "StrictHostKeyChecking=no" -o "ServerAliveInterval=300" -L {{ base_ssh_tunnel_port + index }}:{{ item }}:{{ ssh_default_port }} {{ ssh_user }}@{{ ssh_host }} -p{{ ssh_port }} -N & echo $! > {{ pid_ip_dir_path }}/ssh_tunnel_pid_{{ base_ssh_tunnel_port + index }}'
-  loop: "{{ reachable_ips }}"
+  shell: >
+    ssh -o "StrictHostKeyChecking=no" -o "ServerAliveInterval=300" -L "{{ base_ssh_tunnel_port + index }}:{{ item }}:{{ ssh_default_port }}" {{ ssh_user }}@{{ ssh_host }} -p{{ ssh_port }} -N &
+    echo $! > "{{ pid_ip_dir_path }}/ssh_tunnel_pid_{{ base_ssh_tunnel_port + index }}"
+  loop: "{{ all_target_ips }}"
+  when: item is defined
   loop_control:
     index_var: index
-  register: ssh_tunnel_result
-  changed_when: true
-  when: reachable_ips is defined and reachable_ips | length > 0
-  become: yes
 
 - name: Wait for tunnels to establish
   wait_for:
     host: localhost
     port: "{{ base_ssh_tunnel_port + index }}"
     timeout: 30
-  loop: "{{ reachable_ips }}"
+  loop: "{{ all_target_ips }}"
   loop_control:
     index_var: index
