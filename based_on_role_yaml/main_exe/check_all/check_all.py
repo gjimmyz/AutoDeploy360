@@ -84,12 +84,14 @@ class color:
     RED    = 1
     GREEN  = 2
     YELLOW = 3
+    BLUE = 4
 
 def fmt_html(color_code, text):
     color_mapping = {
         color.RED: "red",
         color.GREEN: "green",
-        color.YELLOW: "yellow"
+        color.YELLOW: "yellow",
+        color.BLUE: "blue"
     }
     return f"<font color='{color_mapping[color_code]}'>{text}</font>"
 
@@ -463,14 +465,24 @@ def get_iperf_test(server_hostname, port=5201, duration=1, max_attempts=3, delay
     print("Failed to get successful iperf run after max attempts. Aborting.")
     return None
 
+def determine_bandwidth_color(bw_value):
+    if bw_value >= 1000:
+        return color.BLUE
+    elif bw_value >= 800 and bw_value < 1000:
+        return color.GREEN
+    else:
+        return color.RED
+
 # 检查带宽并输出结果
 def check_bandwidth(server_hostname, port=5201):
     bandwidth = get_iperf_test(server_hostname, port)
     if bandwidth:
+        color_code = determine_bandwidth_color(bandwidth)
+        highlighted_bandwidth = fmt_html(color_code, f"Bandwidth {bandwidth} Mbits/sec")
         if bandwidth >= 800:
-            print(f"16、Bandwidth 800+ Mbits/sec {fmt_html(color.GREEN, 'Ok')}")
+            print(f"16、{highlighted_bandwidth} {fmt_html(color.GREEN, 'Ok')}")
         else:
-            print(f"16、Bandwidth {bandwidth} Mbits/sec {fmt_html(color.RED, 'Warn')}")
+            print(f"16、{highlighted_bandwidth} {fmt_html(color.RED, 'Warn')}")
     else:
         print("16、Failed to get bandwidth information.")
 
@@ -715,9 +727,9 @@ def check_hwclock():
     date_time = datetime.strptime(date_output, "%Y-%m-%d %H:%M:%S")
     time_difference = abs((date_time - hwclock_time).total_seconds())
     if time_difference <= 300:
-        print(f"25、Hardware Clock and System Time difference: {time_difference} seconds {fmt_html(color.GREEN, 'Ok')}")
+        print(f"25、Hardware Clock and System Time difference: {fmt_html(color.GREEN, f'{time_difference} seconds Ok')}")
     else:
-        print(f"25、Hardware Clock and System Time difference: {time_difference} seconds {fmt_html(color.RED, 'Warn')}")
+        print(f"25、Hardware Clock and System Time difference: {fmt_html(color.RED, f'{time_difference} seconds Warn')}")
 
 def check_nic_parameters():
     result_str = "26、"
@@ -839,6 +851,16 @@ def parse_fio_output(file_path):
     return results
 
 # 执行磁盘性能测试
+def determine_color(bw_string):
+    bw_value = float(re.search(r"(\d+(\.\d+)?)", bw_string).group())
+    if bw_value >= 2000:
+        return color.BLUE
+    elif bw_value >= 1000 and bw_value < 2000:
+        return color.GREEN
+    else:
+        return color.RED
+
+# 执行磁盘性能测试
 def check_disk_fio():
     if shutil.which("fio") is None:
         print("29、Please install 'fio' first and then run the test again.")
@@ -853,12 +875,16 @@ def check_disk_fio():
         return
     if 'read' in read_results:
         print(f"29、Read Command: {read_command}")
-        print(f"29、Read IOPS: {read_results['read']['IOPS']}, Read BW: {read_results['read']['BW']}")
+        color_code = determine_color(read_results['read']['BW'])
+        highlighted_read_bw = fmt_html(color_code, 'Read BW: ' + str(read_results['read']['BW']) + 'MiB/s')
+        print(f"29、Read IOPS: {read_results['read']['IOPS']}, {highlighted_read_bw}")
     else:
         print("No read metrics found in the fio output.")
     if 'write' in write_results:
         print(f"29、Write Command: {write_command}")
-        print(f"29、Write IOPS: {write_results['write']['IOPS']}, Write BW: {write_results['write']['BW']}")
+        color_code = determine_color(write_results['write']['BW'])
+        highlighted_write_bw = fmt_html(color_code, 'Write BW: ' + str(write_results['write']['BW']) + 'MiB/s')
+        print(f"29、Write IOPS: {write_results['write']['IOPS']}, {highlighted_write_bw}")
     else:
         print("No write metrics found in the fio output.")
 

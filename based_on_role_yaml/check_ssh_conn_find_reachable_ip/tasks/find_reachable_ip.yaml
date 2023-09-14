@@ -51,7 +51,7 @@
       register: result
 
     - name: Ping entire IP range using fping on remote machine
-      shell: "fping -a -q -g {{ ip_range_start }} {{ ip_range_end }} || true"
+      shell: "fping -a -q -g -r 1 -t 300 {{ ip_range_start }} {{ ip_range_end }} || true"
       register: ping_result
       delegate_to: "{{ ssh_host }}"
 
@@ -61,20 +61,30 @@
 
 - name: Decide if we should scan with nmap
   block:
-    - name: Compare pinged IPs with previously reachable IPs
+    - name: Extract only the IP addresses from previous reachable IPs
+      set_fact:
+        previous_reachable_ips_cleaned: "{{ previous_reachable_ips | map('regex_search', '\\d+\\.\\d+\\.\\d+\\.\\d+') | select('defined') | list }}"
+      when: ip_file_stat.stat.exists
+
+    - name: Debug output for cleaned previous reachable IPs
+      debug:
+        msg: "Cleaned Previous reachable IPs: {{ previous_reachable_ips_cleaned }}"
+      when: ip_file_stat.stat.exists
+
+    - name: Set should_scan false if pinged IPs are the same as cleaned previously reachable IPs
+      set_fact:
+        should_scan: false
+      when: ip_file_stat.stat.exists and
+            (previous_reachable_ips_cleaned | difference(ping_responded_ips)) == [] and
+            (ping_responded_ips | difference(previous_reachable_ips_cleaned)) == []
+
+    - name: Compare pinged IPs with cleaned previously reachable IPs
       set_fact:
         should_scan: true
       when: ip_file_stat.stat.exists and
-            ((previous_reachable_ips | difference(ping_responded_ips)) or
-            (ping_responded_ips | difference(previous_reachable_ips)))
-
-    - name: Set should_scan false if pinged IPs are the same as previously reachable IPs
-      set_fact:
-        should_scan: false
-      when: ip_file_stat.stat.exists and 
-            (previous_reachable_ips | difference(ping_responded_ips)) == [] and
-            (ping_responded_ips | difference(previous_reachable_ips)) == []
-
+            ((previous_reachable_ips_cleaned | difference(ping_responded_ips)) or
+            (ping_responded_ips | difference(previous_reachable_ips_cleaned)))
+    
     - name: Set should_scan true if pid_ip_file_path does not exist
       set_fact:
         should_scan: true
