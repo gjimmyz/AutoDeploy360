@@ -19,12 +19,20 @@ modules_to_check_str = config.get('PythonModules', 'modules_to_check')
 modules_to_check = modules_to_check_str.split(',')
 timeout_sec = config.getint('Time_out', 'timeout', fallback=300)
 bandwidth_server = config['Bandwidth']['IP']
+# 1M read write
 read_command = config.get('FIO', 'read_command', fallback=None)
 write_command = config.get('FIO', 'write_command', fallback=None)
 read_output_file = config.get('FIO', 'read_output_file', fallback=None)
 write_output_file = config.get('FIO', 'write_output_file', fallback=None)
+# 4K read write
+randwrite_command = config.get('FIO', 'randwrite_command', fallback=None)
+randread_command = config.get('FIO', 'randread_command', fallback=None)
+randwrite_output_file = config.get('FIO', 'randwrite_output_file', fallback=None)
+randread_output_file = config.get('FIO', 'randread_output_file', fallback=None)
+
 output_file = config.get('Check_out_file', 'output_file', fallback='/tmp/check_all_output.txt')
 check_disk_fio_setting = config.get('Check_if_set_fio_test', 'Checkdiskfio', fallback='1')
+check_disk_fio_setting_4k = config.get('Check_if_set_fio_4k_test', 'Checkdiskfio_4k', fallback='1')
 check_cpu_setting = config.get('Check_if_set_cpu_test', 'Checkcputest', fallback='1')
 enable_time_monitoring = config.getint('Performance_monitoring', 'Enabletimemonitoring', fallback=1)
 
@@ -835,8 +843,8 @@ def parse_fio_output(file_path):
         with open(file_path, 'r') as file:
             lines = file.readlines()
             for line in lines:
-                read_match = re.search(r"read: IOPS=(\d+), BW=(\d+MiB/s)", line)
-                write_match = re.search(r"write: IOPS=(\d+), BW=(\d+MiB/s)", line)
+                read_match = re.search(r"read: IOPS=([\d.kKmM]+), BW=([\d.kKmM]+)", line)
+                write_match = re.search(r"write: IOPS=([\d.kKmM]+), BW=([\d.kKmM]+)", line)
                 if read_match:
                     results['read'] = {
                         'IOPS': read_match.group(1),
@@ -851,7 +859,6 @@ def parse_fio_output(file_path):
         return None
     return results
 
-# 执行磁盘性能测试
 def determine_color(bw_string):
     bw_value = float(re.search(r"(\d+(\.\d+)?)", bw_string).group())
     if bw_value >= 2000:
@@ -861,7 +868,7 @@ def determine_color(bw_string):
     else:
         return color.RED
 
-# 执行磁盘性能测试
+# 执行磁盘性能 BW 测试
 def check_disk_fio():
     if shutil.which("fio") is None:
         print("29、Please install 'fio' first and then run the test again.")
@@ -920,6 +927,46 @@ def check_lock_kernel():
     else:
         print(f"30、Check the settings in {apt_10} and {apt_20}. Not all values are set to 0.")
 
+def parse_iops(iops_str):
+    if 'k' in iops_str:
+        return int(float(iops_str.replace('k', '')) * 1000)
+    else:
+        return int(iops_str)
+
+def determine_iops_color(iops_str):
+    iops_value = parse_iops(iops_str)
+    if iops_value >= 100000:
+        return color.BLUE
+    elif 10000 <= iops_value < 100000:
+        return color.GREEN
+    else:
+        return color.RED
+
+# 执行磁盘性能 IOPS 测试
+def check_disk_fio_4k():
+    if shutil.which("fio") is None:
+        print("31、Please install 'fio' first and then run the test again.")
+        return
+    execute_command(randwrite_command, capture_output=True, check=True)
+    time.sleep(5)
+    execute_command(randread_command, capture_output=True, check=True)
+    randwrite_results = parse_fio_output(randwrite_output_file)
+    randread_results = parse_fio_output(randread_output_file)
+    if 'write' in randwrite_results:
+        print(f"31、Randwrite Command: {randwrite_command}")
+        color_code = determine_iops_color(randwrite_results['write']['IOPS'])
+        highlighted_write_iops = fmt_html(color_code, 'Randwrite IOPS: ' + str(randwrite_results['write']['IOPS']))
+        print(f"31、{highlighted_write_iops}, Randwrite BW: {randwrite_results['write']['BW']}")
+    else:
+        print("31、No randwrite metrics found in the fio output.")
+    if 'read' in randread_results:
+        print(f"31、Randread Command: {randread_command}")
+        color_code = determine_iops_color(randread_results['read']['IOPS'])
+        highlighted_read_iops = fmt_html(color_code, 'Randread IOPS: ' + str(randread_results['read']['IOPS']))
+        print(f"31、{highlighted_read_iops}, Randread BW: {randread_results['read']['BW']}")
+    else:
+        print("31、No randread metrics found in the fio output.")
+
 def check_ubuntu20_network():
     if not check_dhcpd_process():
         check_ubuntu20_network_config()
@@ -963,6 +1010,9 @@ for service in config['CubeOrder']['Services'].split(','):
 
 if check_disk_fio_setting == '1':
     common_checks.append(check_disk_fio)
+
+if check_disk_fio_setting_4k == '1':
+    common_checks.append(check_disk_fio_4k)
 
 if check_cpu_setting == '1':
     common_checks.append(check_cpu_tests)
@@ -1016,6 +1066,6 @@ def execute_with_timeout(func, timeout_sec):
     if results:
         for result in results:
             print(result)
-    print(f"31、The script completed successfully. Total time: {elapsed_time:.2f} seconds.")
+    print(f"32、The script completed successfully. Total time: {elapsed_time:.2f} seconds.")
 
 execute_with_timeout(main_function, timeout_sec)
