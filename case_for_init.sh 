@@ -13,6 +13,7 @@ install_samba_script="install_samba/install_samba.py"
 check_time_clock_script="check_time_clock/check_time_clock.py"
 
 retry_message="try again"
+timeout=60
 
 function run_script() {
     cd $auto_deploy_path && python3 $1
@@ -33,7 +34,11 @@ then
         \033[35m 5|e|E 进入github commit \033[0m
         \033[36m 99|q|Q 退出 \033[0m
         "
-        read -p "请选择主菜单选项: " main_menu_choice
+        read -t $timeout -p "请选择主菜单选项: " main_menu_choice
+        if [[ $? -eq 142 ]]; then
+            echo "当前窗口未操作，60秒超时，自动退出..."
+            exit 1
+        fi
         case $main_menu_choice in
             1|a|A)
                 while true
@@ -45,7 +50,11 @@ then
                     \033[34m 4|d|D 返回主菜单 \033[0m
                     \033[35m 99|q|Q 退出 \033[0m
                     "
-                    read -p "请选择二级菜单选项: " submenu_choice
+                    read -t $timeout -p "请选择二级菜单选项: " submenu_choice
+                    if [[ $? -eq 142 ]]; then
+                        echo "当前窗口未操作，60秒超时，自动退出..."
+                        exit 1
+                    fi
                     case $submenu_choice in
                         1|a|A)
                             run_script $init_for_centos7_script
@@ -77,7 +86,11 @@ then
                     \033[33m 3|c|C 返回主菜单 \033[0m
                     \033[34m 99|q|Q 退出 \033[0m
                     "
-                    read -p "请选择子菜单选项: " submenu_choice
+                    read -t $timeout -p "请选择二级菜单选项: " submenu_choice
+                    if [[ $? -eq 142 ]]; then
+                        echo "当前窗口未操作，60秒超时，自动退出..."
+                        exit 1
+                    fi
                     case $submenu_choice in
                         1|a|A)
                             while true
@@ -89,7 +102,11 @@ then
                                 \033[34m 4|d|D 返回主菜单 \033[0m
                                 \033[35m 99|q|Q 退出 \033[0m
                                 "
-                                read -p "请选择子菜单选项: " three_menu_choice
+                                read -t $timeout -p "请选择二级菜单选项: " submenu_choice
+                                if [[ $? -eq 142 ]]; then
+                                    echo "当前窗口未操作，60秒超时，自动退出..."
+                                    exit 1
+                                fi
                                 case $three_menu_choice in
                                     1|a|A)
                                         run_script $install_samba_script
@@ -138,7 +155,11 @@ then
                     \033[35m 5|e|E 返回主菜单 \033[0m
                     \033[36m 99|q|Q 退出 \033[0m
                     "
-                    read -p "请选择二级菜单选项: " submenu_choice
+                    read -t $timeout -p "请选择二级菜单选项: " submenu_choice
+                    if [[ $? -eq 142 ]]; then
+                        echo "当前窗口未操作，60秒超时，自动退出..."
+                        exit 1
+                    fi
                     case $submenu_choice in
                         1|a|A)
                             run_script $check_time_clock_script
