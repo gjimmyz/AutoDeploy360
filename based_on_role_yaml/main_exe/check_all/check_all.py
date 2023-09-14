@@ -24,6 +24,9 @@ write_command = config.get('FIO', 'write_command', fallback=None)
 read_output_file = config.get('FIO', 'read_output_file', fallback=None)
 write_output_file = config.get('FIO', 'write_output_file', fallback=None)
 output_file = config.get('Check_out_file', 'output_file', fallback='/tmp/check_all_output.txt')
+check_disk_fio_setting = config.get('Check_if_set_fio_test', 'Checkdiskfio', fallback='1')
+check_cpu_setting = config.get('Check_if_set_cpu_test', 'Checkcputest', fallback='1')
+enable_time_monitoring = config.getint('Performance_monitoring', 'Enabletimemonitoring', fallback=1)
 
 def check_module(module_name):
     try:
@@ -220,9 +223,11 @@ def check_ubuntu20_repo():
         with open('/etc/apt/sources.list', 'r') as file:
             sources = file.readlines()
         repo_urls = set()
+        repo_names = set()
         for source in sources:
             if source.startswith('deb'):
                 url = source.split()[1]
+                repo_names.add(url.split('/')[-1])
                 repo_urls.add(url)
         for url in repo_urls:
             domain = url.split('//')[1].split('/')[0]
@@ -232,11 +237,7 @@ def check_ubuntu20_repo():
                 break
             except socket.gaierror:
                 print(f'Could not resolve {domain}')
-        result = subprocess.run(['apt-get', 'update'], stdout=subprocess.PIPE)
-        update_output = result.stdout.decode()
-        hit_lines = [line for line in update_output.split('\n') if line.startswith('Hit:')]
-        repo_names = [line.split()[2].split('/')[-1] for line in hit_lines]
-        print(f'8、There are {len(hit_lines)} warehouses: {"、".join(repo_names)}')
+        print(f'8、There are {len(repo_names)} warehouses: {"、".join(repo_names)}')
     except FileNotFoundError:
         print('sources.list file not found')
 
@@ -948,19 +949,23 @@ common_checks = [
     check_memory_info,
     check_disk_info,
     check_raid_info,
-    check_cpu_tests,
     check_dns,
     check_ossutil_cmd,
     check_zabbix_agent,
     check_hwclock,
     check_nic_parameters,
     check_samba_status,
-    check_disk_fio,
     check_lock_kernel
 ]
 
 for service in config['CubeOrder']['Services'].split(','):
     common_checks.append(lambda s=service: check_cube_order_status(s))
+
+if check_disk_fio_setting == '1':
+    common_checks.append(check_disk_fio)
+
+if check_cpu_setting == '1':
+    common_checks.append(check_cpu_tests)
 
 centos7_specific = [
     check_repo,
@@ -971,23 +976,36 @@ ubuntu20_specific = [
     check_ubuntu20_repo,
     check_ubuntu20_network
 ]
+
+# 将时间监控封装为一个函数
+def monitor_execution_time(func):
+    if enable_time_monitoring:
+        start_time = time.time()
+        result = func()
+        elapsed_time = time.time() - start_time
+        print(f"{func.__name__} took {elapsed_time:.2f} seconds.")
+        return result
+    else:
+        return func()
+
 def main_function():
     if platform.system() == 'Linux':
         distro_name, version_str, _ = distro.linux_distribution(full_distribution_name=False)
         distro_name = distro_name.lower()
         major_version = get_major_version(version_str)
         for func in common_checks:
-            func()
-        if not check_ntp_external():
-            check_ntp_internal()
+            monitor_execution_time(func)
+        if not monitor_execution_time(check_ntp_external):
+            monitor_execution_time(check_ntp_internal)
+        specific_checks = []
         if distro_name == 'centos' and major_version == '7':
-            for func in centos7_specific:
-                func()
+            specific_checks = centos7_specific
         elif distro_name == 'ubuntu' and major_version == '20':
-            for func in ubuntu20_specific:
-                func()
+            specific_checks = ubuntu20_specific
         else:
             print('Unsupported Linux distribution')
+        for func in specific_checks:
+            monitor_execution_time(func)
     else:
         print('Unsupported operating system')
 
