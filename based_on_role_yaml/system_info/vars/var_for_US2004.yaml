@@ -44,3 +44,6 @@ sysctl_config:
 ssh_keys:
   - ssh-rsa AAAAB3NzaC1yc2EAAAADAQA............
   - ssh-rsa AAAAB3NzaC1yc2EAAAADAQB............
+debs:
+  - { name: 'hpssacli', deb: 'hpssacli-2.40-13.0_amd64.deb' }
+  - { name: 'megacli', deb: 'megacli_8.07.14-1_all.deb' }

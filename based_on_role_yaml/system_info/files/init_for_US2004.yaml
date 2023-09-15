@@ -33,20 +33,35 @@
   when: not grub_updated.stat.exists
   become: yes
 
-- name: Copy the deb files
-  copy:
-    src: "{{ item }}"
-    dest: "/tmp/{{ item }}"
-  with_items:
-    - hpssacli-2.40-13.0_amd64.deb
-    - megacli_8.07.14-1_all.deb
+- name: Check if hp directory exists
+  stat:
+    path: "/opt/hp"
+  register: hp_dir_status
 
-- name: Install the deb packages
-  command:
-    cmd: dpkg -i "{{ item }}"
-  with_items:
-    - /tmp/hpssacli-2.40-13.0_amd64.deb
-    - /tmp/megacli_8.07.14-1_all.deb
+- name: Check if MegaRAID directory exists
+  stat:
+    path: "/opt/MegaRAID"
+  register: megaRAID_dir_status
+
+- name: Set fact for directories existence
+  set_fact:
+    directories_exist: hp_dir_status.stat.exists and megaRAID_dir_status.stat.exists
+
+- block:
+    - name: Copy the deb files
+      copy:
+        src: "{{ item.deb }}"
+        dest: "/tmp/{{ item.deb }}"
+      loop: "{{ debs }}"
+      when: not directories_exist
+
+    - name: Install the deb packages
+      apt:
+        deb: "/tmp/{{ item.deb }}"
+        state: present
+      loop: "{{ debs }}"
+      when: not directories_exist
+  when: not directories_exist
 
 - name: Set Shanghai timezone
   timezone:

@@ -50,3 +50,7 @@ user_info:
 ssh_keys:
   - ssh-rsa AAAAB3NzaC1yc2EAAAADAQA............
   - ssh-rsa AAAAB3NzaC1yc2EAAAADAQB............
+rpms:
+  - { name: 'hpssacli', rpm: 'hpssacli-2.40-13.0.x86_64.rpm' }
+  - { name: 'MegaCli', rpm: 'MegaCli-8.07.14-1.noarch.rpm' }
+  - { name: 'zabbix_agent', rpm: 'zabbix-agent-3.0.2-1.el7.x86_64.rpm' }

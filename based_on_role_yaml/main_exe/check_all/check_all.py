@@ -74,6 +74,30 @@ import socket
 import configparser
 import threading
 import shutil
+import atexit
+
+def cleanup_tmp_files():
+    tmp_files = [
+        read_output_file,
+        write_output_file,
+        randwrite_output_file,
+        randread_output_file,
+        read_command.split('-filename=')[1].split(' ')[0] if read_command else None,
+        write_command.split('-filename=')[1].split(' ')[0] if write_command else None,
+        randwrite_command.split('-filename=')[1].split(' ')[0] if randwrite_command else None,
+        randread_command.split('-filename=')[1].split(' ')[0] if randread_command else None
+    ]
+    for tmp_file in tmp_files:
+        if tmp_file:
+            try:
+                os.remove(tmp_file)
+                pass
+            except FileNotFoundError:
+                pass
+            except Exception as e:
+                pass
+
+atexit.register(cleanup_tmp_files)
 
 def execute_command(command, capture_output=False, check=False):
     result = subprocess.run(command, stdout=subprocess.PIPE if capture_output else None,

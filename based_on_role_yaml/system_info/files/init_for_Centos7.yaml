@@ -7,7 +7,7 @@
 - name: "Centos7 disable firewalld"
   service: name=firewalld state=stopped enabled=no
 
-- name: "Make /etc/rc.d/rc.local executable"
+- name: "Centos7 make /etc/rc.d/rc.local executable"
   file:
     path: /etc/rc.d/rc.local
     mode: '0755'
@@ -20,23 +20,35 @@
   with_items:
     - ossutil64
 
-- name: "Centos7 Copy the rpm files"
-  copy:
-    src: "{{ item }}"
-    dest: "/tmp/{{ item }}"
-  with_items:
-    - hpssacli-2.40-13.0.x86_64.rpm
-    - MegaCli-8.07.14-1.noarch.rpm
-    - zabbix-agent-3.0.2-1.el7.x86_64.rpm
+- name: Check if hp directory exists
+  stat:
+    path: "/opt/hp"
+  register: hp_dir_status
 
-- name: "Centos7 Install the rpm packages"
-  yum:
-    name: "{{ item }}"
-    state: present
-  with_items:
-    - /tmp/hpssacli-2.40-13.0.x86_64.rpm
-    - /tmp/MegaCli-8.07.14-1.noarch.rpm
-    - /tmp/zabbix-agent-3.0.2-1.el7.x86_64.rpm
+- name: Check if MegaRAID directory exists
+  stat:
+    path: "/opt/MegaRAID"
+  register: megaRAID_dir_status
+
+- name: Set fact for directories existence
+  set_fact:
+    directories_exist: hp_dir_status.stat.exists and megaRAID_dir_status.stat.exists
+
+- block:
+    - name: Copy the rpm files
+      copy:
+        src: "{{ item.rpm }}"
+        dest: "/tmp/{{ item.rpm }}"
+      loop: "{{ rpms }}"
+      when: not directories_exist
+
+    - name: Install the rpm packages
+      yum:
+        name: "/tmp/{{ item.rpm }}"
+        state: present
+      loop: "{{ rpms }}"
+      when: not directories_exist
+  when: not directories_exist
 
 - name: "Centos7 Start zabbix-agent service and enable at boot"
   systemd:
