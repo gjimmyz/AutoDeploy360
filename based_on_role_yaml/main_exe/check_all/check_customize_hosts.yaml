@@ -1,8 +1,0 @@
-[centos_servers]
-xxx.xxx.xxx.xxx ansible_ssh_host=xxx.xxx.xxx.xxx ansible_port=22
-[centos_servers:vars]
-ansible_ssh_user=user
-ansible_ssh_pass=user
-ansible_become=true
-ansible_become_user=root
-ansible_become_pass=user

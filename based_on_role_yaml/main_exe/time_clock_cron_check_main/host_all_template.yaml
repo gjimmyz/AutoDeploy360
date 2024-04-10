@@ -1,9 +1,0 @@
-[all_all]
-
-[all_all:vars]
-ansible_ssh_user=user
-ansible_ssh_pass=user
-ansible_port=22
-ansible_become=yes
-ansible_become_user=root
-ansible_become_password=user

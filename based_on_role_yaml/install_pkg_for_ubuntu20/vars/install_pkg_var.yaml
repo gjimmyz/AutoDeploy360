@@ -1,5 +1,0 @@
-marker_file_path: "/var/lib/pkg_file"
-key_file_dir: "/root/scripts/AutoDeploy360/based_on_role_yaml/install_pkg_for_ubuntu20/files/"
-cube_node_order_key_path: "{{ key_file_dir }}cube_node_order_key"
-cube_node_key_path: "{{ key_file_dir }}cube_node_key"
-server_ip: "xxx.xxx.xxx.xxx"

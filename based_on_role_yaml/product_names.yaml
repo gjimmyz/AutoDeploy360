@@ -1,9 +1,0 @@
-product_names:
-  "M8S": "M8S"
-  "NUC11ATKC4": "NUC11ATKC4"
-  "System x3550 M5": "lenovo_x3550"
-  "System x3650 M5": "lenovo_x3650"
-  "PowerEdge R730xd": "dell_R730xd"
-  "SL4540 Gen8": "hp_Gen8"
-  "ThinkSystem SR550 -[7X04CTO1WW]-": "ThinkSystem_SR550"
-  "ProLiant DL380 Gen9": "hp_Gen9" 

@@ -1,4 +1,0 @@
-mail_host: "10.xxx.xxx.42"
-from_address: "xxxx@mingmatechs.com"
-to_addresses: ["gong_zheng@mingmatechs.com"]
-scripts_dir: "/root/scripts"
