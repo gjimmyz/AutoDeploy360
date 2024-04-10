@@ -1,0 +1,64 @@
+1、ssh_conn.yaml
+[ip_proxy]
+ip_proxy_middle ansible_ssh_host="{{ jump_host }}"
+
+[ip_proxy:vars]
+ansible_ssh_user="{{ ssh_for_conn.ansible_ssh_user }}"
+ansible_ssh_pass="{{ ssh_for_conn.ansible_ssh_pass }}"
+ansible_become="{{ ssh_for_conn.ansible_become }}"
+ansible_become_user="{{ ssh_for_conn.ansible_become_user }}"
+ansible_become_pass="{{ ssh_for_conn.ansible_become_pass }}"
+ansible_ssh_port="{{ ssh_for_conn.ansible_ssh_port }}"
+
+[centos_servers]
+
+[ubuntu_servers]
+
+2、main.yaml
+---
+# tasks/main.yaml
+- name: Common
+  include_tasks: common.yaml
+
+- name: Check and generate ssh key
+  include_tasks: generate_ssh_key.yaml
+
+- name: Ensure ssh key is present on remote Host
+  include_tasks: ensure_ssh_key_present.yaml
+
+3、common.yaml
+- name: Output the guidance information for the community.crypto collection
+  debug:
+    msg:
+      - "1、简介：此模块属于community.crypto集合 (版本 2.18.0)，不包含在ansible-core中。"
+      - "2、官网代码参考：https://docs.ansible.com/ansible/latest/collections/community/crypto/openssh_keypair_module.html"
+      - "3、检查安装：运行'ansible-galaxy collection list'检查是否已安装。"
+      - "4、安装命令：'ansible-galaxy collection install community.crypto'"
+      - "5、更新命令：'ansible-galaxy collection install community.crypto --upgrade'"
+      - "6、使用要求：请确保满足所有要求后再在playbook中指定：community.crypto.openssh_keypair。在运行此playbook之前，请确保您已安装并更新了community.crypto集合。"
+
+4、generate_ssh_key.yaml
+# generate_ssh_key.yaml
+- name: Check if ssh key exists on ansible control node
+  stat:
+    path: "{{ ssh_for_conn.ansible_control_node_ssh_key_path }}"
+  delegate_to: localhost
+  run_once: true
+  register: ssh_key_check
+
+- name: Generate ssh key on ansible control node if not exists
+  community.crypto.openssh_keypair:
+    path: "{{ ssh_for_conn.ansible_control_node_ssh_key_path }}"
+    type: rsa
+    size: 4096
+  delegate_to: localhost
+  run_once: true
+  when: not ssh_key_check.stat.exists
+
+5、ensure_ssh_key_present.yaml
+# ensure_ssh_key_present.yaml
+- name: Ensure ssh public key is present on remote host
+  authorized_key:
+    user: "{{ ssh_for_conn.ansible_ssh_user }}"
+    state: present
+    key: "{{ lookup('file', ssh_for_conn.ansible_control_node_ssh_pub_key_path) }}"
